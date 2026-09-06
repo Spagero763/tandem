@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+
+/*
+ * Tandem runs inside the Nimiq Pay WebView on a phone, held in one hand. The
+ * design commits to a single dark scheme on purpose: the arena reads as light
+ * on darkness, and a light mode would invert the one relationship the whole
+ * game is built on.
+ */
+@theme {
+  --color-ink-950: #05060a;
+  --color-ink-900: #090b11;
+  --color-ink-850: #0d1018;
+  --color-ink-800: #12151f;
+  --color-ink-700: #1a1f2c;
+  --color-ink-600: #262c3b;
+
+  --color-chalk: #e9ecf4;
+  --color-muted: #949cb2;
+  --color-dim: #5b6379;
+
+  /* The two orbs. Warm on the left, cool on the right: one thumb, two poles.
+     Named warm/cool rather than left/right so the generated utilities don't
+     collide with Tailwind's own text-left and text-right. */
+  --color-warm: #ffb443;
+  --color-warm-soft: #ffd9a0;
+  --color-cool: #3fe0cf;
+  --color-cool-soft: #a5f2e9;
+
+  --color-shard: #ff4d6d;
+  --color-ghost: #a88bff;
+  --color-nimiq: #e9b213;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-ink-950);
+  color: var(--color-chalk);
+  font-family: var(--font-sans);
+  /* The arena is driven by a dragging thumb. Any of these would let the WebView
+     steal that gesture as a scroll, a pull-to-refresh, or a text selection. */
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+body {
+  /* A cold horizon behind everything, so flat black never reads as "unstyled". */
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, #101526 0%, transparent 60%),
+    radial-gradient(90% 50% at 50% 100%, #0b1119 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+/* Numbers that change every frame must not reflow the layout around them. */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.hairline {
+  border-color: color-mix(in oklab, var(--color-chalk) 9%, transparent);
+}
+
+/* A single reusable "lifted glass" surface, so panels stay consistent. */
+.panel {
+  background: color-mix(in oklab, var(--color-ink-850) 88%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-chalk) 8%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-chalk) 6%, transparent) inset,
+    0 24px 48px -24px rgb(0 0 0 / 0.9);
+  backdrop-filter: blur(12px);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.rise {
+  animation: rise 0.5s var(--ease-out-expo) both;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-ink-800) 0%,
+    var(--color-ink-700) 50%,
+    var(--color-ink-800) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

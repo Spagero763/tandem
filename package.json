@@ -1,0 +1,48 @@
+{
+  "name": "tandem",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 -p 3200",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "verify:crypto": "tsx scripts/verify-nimiq-crypto.ts",
+    "verify:sim": "tsx scripts/verify-sim.ts",
+    "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts",
+    "typecheck": "tsc --noEmit",
+    "verify:renderer": "tsx scripts/verify-renderer.mts",
+    "verify:api": "tsx scripts/verify-api.mts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@neondatabase/serverless": "^1.1.0",
+    "@nimiq/mini-app-sdk": "^0.1.0",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "drizzle-orm": "^0.45.2",
+    "gsap": "^3.15.0",
+    "jose": "^6.2.12",
+    "motion": "^13.2.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "viem": "^2.56.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@nimiq/core": "^2.21.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
