@@ -11,7 +11,6 @@
  */
 import { decodeInputs, encodeInputs, quantizeInput } from '../src/lib/sim/codec'
 import {
-  MAX_THUMB_SPEED_PER_TICK,
   ORB_RADIUS,
   ORB_Y,
   RUN_TICKS,
@@ -19,8 +18,8 @@ import {
   TICK_HZ,
 } from '../src/lib/sim/constants'
 import { ENTITY_MOTE, ENTITY_SHARD, generateCourse } from '../src/lib/sim/course'
-import { Rng } from '../src/lib/sim/rng'
-import { createSimState, simulate, STATE_ALIVE, step } from '../src/lib/sim/simulate'
+import { autoplay } from '../src/lib/sim/autoplay'
+import { simulate } from '../src/lib/sim/simulate'
 
 let failures = 0
 
@@ -33,97 +32,6 @@ function check(name: string, ok: boolean, detail = '') {
 }
 
 const SEEDS = ['heat-2026-09-06', 'heat-2026-09-07', 'alpha', 'b', 'ghost-duel-114', 'ZZZZ']
-
-/**
- * A bot that plays through the real simulation rather than second-guessing it.
- *
- * Each tick it looks at what is actually on screen, picks the wave arriving
- * soonest, and steers to the safest position in that wave that also picks up a
- * mote. `skill` models a human imperfectly: a slower thumb, a reaction delay,
- * and a little aim jitter. It exists to tune difficulty and to seed practice
- * ghosts, so it has to fail the way a person fails.
- */
-function autoplay(seed: string, skill = 1): number[] {
-  const state = createSimState(seed)
-  const inputs: number[] = []
-
-  const blockRadius = SHARD_RADIUS + ORB_RADIUS + 0.015
-  const maxStep = MAX_THUMB_SPEED_PER_TICK * (0.5 + 0.5 * skill)
-  const reactionTicks = Math.round((1 - skill) * 9)
-  const jitter = (1 - skill) * 0.05
-
-  let thumb = 0.5
-  let target = 0.5
-  let holdUntil = -1
-  const noise = new Rng(`bot:${seed}:${skill}`)
-
-  // The orb cannot pass through a shard, so the game is played in two beats:
-  // hold the line while a wave crosses, then slide to the next gap in the clear
-  // window between waves. A bot that ignores that and chases motes straight
-  // across the screen gets cut down, exactly as a player would be.
-  const band = ORB_RADIUS + SHARD_RADIUS
-
-  for (let tick = 0; tick < RUN_TICKS && !state.ended; tick++) {
-    const crossing = state.entities.some(
-      (entity) =>
-        entity.state === STATE_ALIVE &&
-        entity.type === ENTITY_SHARD &&
-        Math.abs(entity.y - ORB_Y) < band + 0.02,
-    )
-
-    if (!crossing) {
-      // Pick the next wave to line up against.
-      let soonest = Number.POSITIVE_INFINITY
-      for (const entity of state.entities) {
-        if (entity.state !== STATE_ALIVE || entity.y > ORB_Y - band) continue
-        const ttl = (ORB_Y - entity.y) / entity.speed
-        if (ttl < soonest) soonest = ttl
-      }
-
-      if (Number.isFinite(soonest) && tick > holdUntil) {
-        const wave = state.entities.filter((entity) => {
-          if (entity.state !== STATE_ALIVE || entity.y > ORB_Y - band) return false
-          return (ORB_Y - entity.y) / entity.speed <= soonest + 0.1
-        })
-
-        const shards = wave.filter((e) => e.type === ENTITY_SHARD).map((e) => e.thumbX)
-        const motes = wave.filter((e) => e.type === ENTITY_MOTE).map((e) => e.thumbX)
-        const safe = (x: number) => shards.every((s) => Math.abs(s - x) > blockRadius)
-
-        const mote = motes.filter(safe).sort((a, b) => Math.abs(a - thumb) - Math.abs(b - thumb))[0]
-        if (mote !== undefined) {
-          target = mote
-        } else {
-          let best = thumb
-          let bestDistance = Number.POSITIVE_INFINITY
-          for (let candidate = 0; candidate <= 1.0001; candidate += 0.005) {
-            if (!safe(candidate)) continue
-            if (Math.abs(candidate - thumb) < bestDistance) {
-              bestDistance = Math.abs(candidate - thumb)
-              best = candidate
-            }
-          }
-          target = best
-        }
-
-        if (jitter > 0) target += noise.nextRange(-jitter, jitter)
-        target = target < 0 ? 0 : target > 1 ? 1 : target
-        // A slower player commits to the line later.
-        holdUntil = tick + reactionTicks
-      }
-
-      const delta = target - thumb
-      thumb += delta > maxStep ? maxStep : delta < -maxStep ? -maxStep : delta
-      thumb = thumb < 0 ? 0 : thumb > 1 ? 1 : thumb
-    }
-
-    const quantized = quantizeInput(thumb)
-    inputs.push(quantized)
-    step(state, quantized)
-  }
-
-  return inputs
-}
 
 console.log('\nDeterminism')
 

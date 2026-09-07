@@ -1,82 +1,160 @@
 'use client'
 
-import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
+import Link from 'next/link'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Arena } from '@/components/Arena'
+import { usePlayer } from '@/components/PlayerProvider'
+import { ResultSheet, type Submission } from '@/components/ResultSheet'
 import type { RunOutcome } from '@/game/useTandem'
-import { RUN_TICKS, TICK_HZ } from '@/lib/sim/constants'
+import { getDeviceIdentifier } from '@/lib/nimiq/client'
+import { decodeInputs, encodeInputs } from '@/lib/sim/codec'
 
-function todaySeed(): string {
-  return `heat-${new Date().toISOString().slice(0, 10)}`
+interface Ghost {
+  kind: 'player' | 'trainer'
+  label: string
+  score: number
+  runId: string | null
+  inputs: number[]
+}
+
+function todayHeat(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export default function Page() {
-  const [seed] = useState(todaySeed)
+  const { player, signIn, signingIn } = usePlayer()
+
+  const [heatId] = useState(todayHeat)
+  const [ghost, setGhost] = useState<Ghost | null>(null)
   const [outcome, setOutcome] = useState<RunOutcome | null>(null)
+  const [submission, setSubmission] = useState<Submission | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [runKey, setRunKey] = useState(0)
 
-  const onEnd = useCallback((result: RunOutcome) => setOutcome(result), [])
+  const deviceHashRef = useRef<string | null>(null)
+
+  const loadGhost = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/ghost?heat=${heatId}`, { cache: 'no-store' })
+      if (!response.ok) return
+      const data = (await response.json()) as Omit<Ghost, 'inputs'> & { inputs: string }
+      const inputs = decodeInputs(data.inputs)
+      if (inputs) setGhost({ ...data, inputs: Array.from(inputs) })
+    } catch {
+      // Racing a ghost is a bonus, not a requirement. A failure here must never
+      // stop someone from playing.
+    }
+  }, [heatId])
+
+  useEffect(() => {
+    void loadGhost()
+  }, [loadGhost])
+
+  const submit = useCallback(
+    async (result: RunOutcome) => {
+      setSubmitting(true)
+      setSubmitError(null)
+
+      try {
+        const response = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            heatId,
+            inputs: encodeInputs(result.inputs),
+            claimedScore: result.score,
+            claimedChecksum: result.checksum,
+            pauses: result.pauses,
+            deviceHash: deviceHashRef.current,
+          }),
+        })
+
+        const data = (await response.json().catch(() => ({}))) as Submission & { error?: string }
+
+        if (!response.ok) {
+          setSubmitError(data.error ?? 'Could not save that run.')
+          return
+        }
+
+        setSubmission(data)
+      } catch {
+        setSubmitError('Could not reach the ladder. Your run was not saved.')
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    [heatId],
+  )
+
+  const onEnd = useCallback(
+    (result: RunOutcome) => {
+      setOutcome(result)
+      if (player) void submit(result)
+    },
+    [player, submit],
+  )
+
+  /**
+   * Signing in after a run, rather than before one, is the point: nobody should
+   * have to approve a wallet dialog to find out whether they like the game. If
+   * they sign in from the result sheet, the run they just played is submitted.
+   */
+  const onSignIn = useCallback(async () => {
+    const ok = await signIn()
+    if (!ok) return
+
+    deviceHashRef.current ??= await getDeviceIdentifier(
+      'Rank your runs and keep the ladder free of duplicate entries',
+    )
+
+    if (outcome) await submit(outcome)
+  }, [outcome, signIn, submit])
 
   const again = useCallback(() => {
     setOutcome(null)
+    setSubmission(null)
+    setSubmitError(null)
     setRunKey((key) => key + 1)
-  }, [])
+    void loadGhost()
+  }, [loadGhost])
 
   return (
     <main className="fixed inset-0 flex flex-col">
-      <Arena key={runKey} seed={seed} onEnd={onEnd} />
+      <Arena
+        key={runKey}
+        seed={`heat-${heatId}`}
+        ghostInputs={ghost?.inputs ?? null}
+        ghostName={ghost?.label ?? null}
+        onEnd={onEnd}
+      />
+
+      <Link
+        href="/ladder"
+        className="absolute right-4 z-10 rounded-full bg-ink-800/80 px-4 py-2 text-xs font-medium text-muted backdrop-blur"
+        style={{ bottom: 'calc(var(--safe-bottom) + 1rem)' }}
+      >
+        Ladder
+      </Link>
 
       <AnimatePresence>
         {outcome ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 flex items-center justify-center bg-ink-950/88 p-6 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="panel w-full max-w-sm rounded-3xl p-7"
-            >
-              <p className="text-xs font-medium tracking-[0.18em] text-dim uppercase">
-                {outcome.survived ? 'Heat complete' : 'Knocked out'}
-              </p>
-              <p className="tabular mt-2 text-6xl font-semibold text-chalk">
-                {outcome.score.toLocaleString()}
-              </p>
-
-              <dl className="mt-7 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                <Stat label="Motes" value={outcome.motes.toLocaleString()} />
-                <Stat label="Best combo" value={`×${outcome.bestCombo}`} />
-                <Stat label="Grazes" value={outcome.grazes.toLocaleString()} />
-                <Stat
-                  label="Survived"
-                  value={`${(outcome.ticks / TICK_HZ).toFixed(1)}s / ${RUN_TICKS / TICK_HZ}s`}
-                />
-              </dl>
-
-              <button
-                type="button"
-                onClick={again}
-                className="mt-8 w-full rounded-full bg-chalk py-3.5 text-sm font-semibold text-ink-950"
-              >
-                Run it again
-              </button>
-            </motion.div>
-          </motion.div>
+          <ResultSheet
+            outcome={outcome}
+            submission={submission}
+            submitting={submitting}
+            submitError={submitError}
+            ghostLabel={ghost?.label ?? null}
+            ghostScore={ghost?.score ?? null}
+            signedIn={Boolean(player)}
+            signingIn={signingIn}
+            onSignIn={onSignIn}
+            onAgain={again}
+          />
         ) : null}
       </AnimatePresence>
     </main>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[11px] tracking-wide text-dim uppercase">{label}</dt>
-      <dd className="tabular mt-1 text-lg text-chalk">{value}</dd>
-    </div>
   )
 }

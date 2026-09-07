@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 
+import { PlayerProvider } from '@/components/PlayerProvider'
+
 import './globals.css'
 
 const sans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -32,7 +34,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable} h-full`}>
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full antialiased">
+        <PlayerProvider>{children}</PlayerProvider>
+      </body>
     </html>
   )
 }

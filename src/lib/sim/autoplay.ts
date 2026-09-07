@@ -1,14 +1,14 @@
-import { quantizeInput } from '../../src/lib/sim/codec'
+import { quantizeInput } from './codec'
 import {
   MAX_THUMB_SPEED_PER_TICK,
   ORB_RADIUS,
   ORB_Y,
   RUN_TICKS,
   SHARD_RADIUS,
-} from '../../src/lib/sim/constants'
-import { ENTITY_MOTE, ENTITY_SHARD } from '../../src/lib/sim/course'
-import { Rng } from '../../src/lib/sim/rng'
-import { createSimState, STATE_ALIVE, step } from '../../src/lib/sim/simulate'
+} from './constants'
+import { ENTITY_MOTE, ENTITY_SHARD } from './course'
+import { Rng } from './rng'
+import { createSimState, STATE_ALIVE, step } from './simulate'
 
 /**
  * A bot that plays through the real simulation rather than second-guessing it.

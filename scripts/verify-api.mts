@@ -10,7 +10,7 @@
  */
 import * as Nimiq from '@nimiq/core'
 
-import { autoplay } from './lib/autoplay.js'
+import { autoplay } from '../src/lib/sim/autoplay'
 import { encodeInputs } from '../src/lib/sim/codec'
 import { simulate } from '../src/lib/sim/simulate'
 import { bytesToHex, messageDigest } from '../src/lib/nimiq/signature'
