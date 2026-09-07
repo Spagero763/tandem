@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 
@@ -33,32 +34,56 @@ interface PlayerContextValue {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null)
 
+/** The host bridge never appears or disappears mid-session, so nothing to watch. */
+function subscribeToHost(): () => void {
+  return () => {}
+}
+
+async function fetchPlayer(): Promise<Player | null> {
+  try {
+    const response = await fetch('/api/me', { cache: 'no-store' })
+    const data = (await response.json()) as { player: Player | null }
+    return data.player
+  } catch {
+    return null
+  }
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [player, setPlayer] = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [insideNimiqPay, setInsideNimiqPay] = useState(false)
-
-  useEffect(() => {
-    setInsideNimiqPay(isInsideNimiqPay())
-  }, [])
+  /*
+   * Nimiq Pay injects its bridge before page scripts run and never removes it,
+   * so this is a static read of an external system rather than state. The
+   * server has no bridge, hence the separate server snapshot.
+   */
+  const insideNimiqPay = useSyncExternalStore(
+    subscribeToHost,
+    isInsideNimiqPay,
+    () => false,
+  )
 
   const refresh = useCallback(async () => {
-    try {
-      const response = await fetch('/api/me', { cache: 'no-store' })
-      const data = (await response.json()) as { player: Player | null }
-      setPlayer(data.player)
-    } catch {
-      setPlayer(null)
-    } finally {
-      setLoading(false)
-    }
+    setPlayer(await fetchPlayer())
+    setLoading(false)
   }, [])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    let cancelled = false
+
+    void (async () => {
+      const found = await fetchPlayer()
+      if (cancelled) return
+      setPlayer(found)
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   /**
    * One wallet dialog, not two.

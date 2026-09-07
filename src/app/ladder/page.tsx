@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react'
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { usePlayer } from '@/components/PlayerProvider'
 
@@ -42,21 +42,26 @@ export default function LadderPage() {
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState(0)
 
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch('/api/ladder', { cache: 'no-store' })
-      if (!response.ok) throw new Error()
-      const body = (await response.json()) as LadderData
-      setData(body)
-      setRemaining(body.closesInMs)
-    } catch {
-      setError('Could not load the ladder.')
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const response = await fetch('/api/ladder', { cache: 'no-store' })
+        if (!response.ok) throw new Error()
+        const body = (await response.json()) as LadderData
+        if (cancelled) return
+        setData(body)
+        setRemaining(body.closesInMs)
+      } catch {
+        if (!cancelled) setError('Could not load the ladder.')
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   useEffect(() => {
     if (!data?.isCurrent) return
@@ -123,10 +128,13 @@ export default function LadderPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(index * 0.025, 0.4), ease: [0.16, 1, 0.3, 1] }}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${
-                  isYou ? 'bg-warm/12 ring-1 ring-warm/25' : 'bg-ink-850/70'
-                }`}
               >
+                <Link
+                  href={`/run/${row.runId}`}
+                  className={`flex min-h-14 items-center gap-3 rounded-2xl px-4 py-3 ${
+                    isYou ? 'bg-warm/12 ring-1 ring-warm/25' : 'bg-ink-850/70'
+                  }`}
+                >
                 <span
                   className={`tabular w-7 text-sm font-semibold ${
                     row.rank <= 3 ? 'text-warm' : 'text-dim'
@@ -159,7 +167,8 @@ export default function LadderPage() {
                   <span className="tabular text-sm font-semibold text-chalk">
                     {row.score.toLocaleString()}
                   </span>
-                </div>
+                  </div>
+                </Link>
               </motion.li>
             )
           })}
@@ -181,13 +190,6 @@ export default function LadderPage() {
         device cannot report a score it did not play.
       </p>
 
-      <Link
-        href="/"
-        className="fixed left-1/2 z-10 -translate-x-1/2 rounded-full bg-chalk px-8 py-3.5 text-sm font-semibold text-ink-950 shadow-lg"
-        style={{ bottom: 'calc(var(--safe-bottom) + 1.25rem)' }}
-      >
-        Play the heat
-      </Link>
     </main>
   )
 }

@@ -145,10 +145,8 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     })
   }, [emitHud, setPhaseBoth])
 
-  const loop = useCallback(
+  const advance = useCallback(
     (time: number) => {
-      frameRef.current = requestAnimationFrame(loop)
-
       const renderer = rendererRef.current
       const state = stateRef.current
       if (!renderer || !state) return
@@ -195,10 +193,26 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     [emitHud, finish, ghostInputs],
   )
 
+  /*
+   * The frame driver is started once and never restarted. Holding the body in
+   * a ref matters: if the loop were re-created whenever `ghostInputs` changed
+   * identity, the animation frame would be cancelled and rescheduled in the
+   * middle of a run, losing the accumulator and stuttering the course.
+   */
+  const advanceRef = useRef(advance)
+
   useEffect(() => {
-    frameRef.current = requestAnimationFrame(loop)
+    advanceRef.current = advance
+  }, [advance])
+
+  useEffect(() => {
+    frameRef.current = requestAnimationFrame(function frame(time: number) {
+      frameRef.current = requestAnimationFrame(frame)
+      advanceRef.current(time)
+    })
+
     return () => cancelAnimationFrame(frameRef.current)
-  }, [loop])
+  }, [])
 
   const beginCountdown = useCallback(() => {
     setPhaseBoth('countdown')

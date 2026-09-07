@@ -23,6 +23,22 @@ function todayHeat(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+/**
+ * Racing a ghost is a bonus, not a requirement, so every failure here resolves
+ * to null and the player still gets a heat.
+ */
+async function fetchGhost(heatId: string): Promise<Ghost | null> {
+  try {
+    const response = await fetch(`/api/ghost?heat=${heatId}`, { cache: 'no-store' })
+    if (!response.ok) return null
+    const data = (await response.json()) as Omit<Ghost, 'inputs'> & { inputs: string }
+    const inputs = decodeInputs(data.inputs)
+    return inputs ? { ...data, inputs: Array.from(inputs) } : null
+  } catch {
+    return null
+  }
+}
+
 export default function Page() {
   const { player, signIn, signingIn } = usePlayer()
 
@@ -37,21 +53,20 @@ export default function Page() {
   const deviceHashRef = useRef<string | null>(null)
 
   const loadGhost = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/ghost?heat=${heatId}`, { cache: 'no-store' })
-      if (!response.ok) return
-      const data = (await response.json()) as Omit<Ghost, 'inputs'> & { inputs: string }
-      const inputs = decodeInputs(data.inputs)
-      if (inputs) setGhost({ ...data, inputs: Array.from(inputs) })
-    } catch {
-      // Racing a ghost is a bonus, not a requirement. A failure here must never
-      // stop someone from playing.
-    }
+    const found = await fetchGhost(heatId)
+    if (found) setGhost(found)
   }, [heatId])
 
   useEffect(() => {
-    void loadGhost()
-  }, [loadGhost])
+    let cancelled = false
+    void (async () => {
+      const found = await fetchGhost(heatId)
+      if (!cancelled && found) setGhost(found)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [heatId])
 
   const submit = useCallback(
     async (result: RunOutcome) => {

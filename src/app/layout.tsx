@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 
+import { Nav } from '@/components/Nav'
 import { PlayerProvider } from '@/components/PlayerProvider'
 
 import './globals.css'
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable} h-full`}>
       <body className="min-h-full antialiased">
-        <PlayerProvider>{children}</PlayerProvider>
+        <PlayerProvider>
+          {children}
+          <Nav />
+        </PlayerProvider>
       </body>
     </html>
   )

@@ -17,7 +17,7 @@ import {
   SURVIVAL_BONUS,
   TICK_SECONDS,
 } from './constants'
-import { ENTITY_MOTE, ENTITY_SHARD, generateCourse, type CourseEntity } from './course'
+import { ENTITY_MOTE, generateCourse, type CourseEntity } from './course'
 import { mixChecksum } from './rng'
 
 export const STATE_PENDING = 0
