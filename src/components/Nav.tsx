@@ -3,14 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const TABS = [
-  { href: '/', label: 'Arena' },
-  { href: '/ladder', label: 'Ladder' },
-  { href: '/pot', label: 'Pot' },
-] as const
+import { useCopy } from '@/components/CopyProvider'
 
 export function Nav() {
   const pathname = usePathname()
+  const t = useCopy()
+
+  const tabs = [
+    { href: '/', label: t.navArena },
+    { href: '/ladder', label: t.navLadder },
+    { href: '/pot', label: t.navPot },
+  ] as const
 
   /*
    * Not on the arena. The thumb control lives along the bottom edge, so a bar
@@ -25,7 +28,7 @@ export function Nav() {
       style={{ paddingBottom: 'calc(var(--safe-bottom) + 0.75rem)' }}
     >
       <div className="panel flex gap-1 rounded-full p-1">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = pathname === tab.href
           return (
             <Link

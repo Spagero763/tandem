@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { useCopy } from '@/components/CopyProvider'
 import { usePlayer } from '@/components/PlayerProvider'
 
 interface Row {
@@ -29,8 +30,8 @@ interface LadderData {
   top: Row[]
 }
 
-function countdown(ms: number): string {
-  if (ms <= 0) return 'closed'
+function countdown(ms: number, closed: string): string {
+  if (ms <= 0) return closed
   const hours = Math.floor(ms / 3_600_000)
   const minutes = Math.floor((ms % 3_600_000) / 60_000)
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
@@ -38,6 +39,7 @@ function countdown(ms: number): string {
 
 export default function LadderPage() {
   const { player } = usePlayer()
+  const t = useCopy()
   const [data, setData] = useState<LadderData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState(0)
@@ -54,14 +56,14 @@ export default function LadderPage() {
         setData(body)
         setRemaining(body.closesInMs)
       } catch {
-        if (!cancelled) setError('Could not load the ladder.')
+        if (!cancelled) setError(t.ladderError)
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t.ladderError])
 
   useEffect(() => {
     if (!data?.isCurrent) return
@@ -76,16 +78,16 @@ export default function LadderPage() {
     >
       <header className="flex items-baseline justify-between">
         <div>
-          <h1 className="display text-2xl text-chalk">Today&rsquo;s heat</h1>
+          <h1 className="display text-2xl text-chalk">{t.ladderTitle}</h1>
           <p className="mt-1 text-xs text-dim">
-            {data ? `${data.heatId} · closes in ${countdown(remaining)}` : 'Loading…'}
+            {data ? `${data.heatId} · ${t.ladderCloses(countdown(remaining, t.ladderClosed))}` : '…'}
           </p>
         </div>
         {data ? (
           <div className="text-right">
             <p className="tabular text-lg font-semibold text-chalk">{data.players}</p>
             <p className="text-[10px] tracking-wide text-dim uppercase">
-              {data.players === 1 ? 'player' : 'players'}
+              {data.players === 1 ? t.ladderPlayer : t.ladderPlayers}
             </p>
           </div>
         ) : null}
@@ -105,15 +107,15 @@ export default function LadderPage() {
 
       {data && data.top.length === 0 ? (
         <div className="panel mt-8 rounded-2xl p-6 text-center">
-          <p className="text-sm text-chalk">Nobody has posted a score yet today.</p>
+          <p className="text-sm text-chalk">{t.ladderEmpty}</p>
           <p className="mt-2 text-xs leading-relaxed text-muted">
-            The course resets every day at midnight UTC. Be the first name on it.
+            {t.ladderEmptyBlurb}
           </p>
           <Link
             href="/"
             className="mt-5 inline-block rounded-full bg-chalk px-6 py-2.5 text-sm font-semibold text-ink-950"
           >
-            Play the heat
+            {t.ladderPlay}
           </Link>
         </div>
       ) : null}
@@ -146,12 +148,12 @@ export default function LadderPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-chalk">
                     {row.handle}
-                    {isYou ? <span className="ml-1.5 text-xs text-warm">you</span> : null}
+                    {isYou ? <span className="ml-1.5 text-xs text-warm">{t.ladderYou}</span> : null}
                   </p>
                   <p className="mt-0.5 text-[11px] text-dim">
-                    ×{row.bestCombo} combo · {row.attempts}{' '}
-                    {row.attempts === 1 ? 'run' : 'runs'}
-                    {row.survived ? ' · finished' : ''}
+                    ×{row.bestCombo} · {row.attempts}{' '}
+                    {row.attempts === 1 ? t.ladderRun : t.ladderRuns}
+                    {row.survived ? ` · ${t.ladderFinished}` : ''}
                   </p>
                 </div>
 
@@ -161,7 +163,7 @@ export default function LadderPage() {
                       title="Stakes NIM through Tandem"
                       className="rounded-full bg-nimiq/15 px-2 py-0.5 text-[10px] font-medium text-nimiq"
                     >
-                      Patron
+                      {t.ladderPatron}
                     </span>
                   ) : null}
                   <span className="tabular text-sm font-semibold text-chalk">
@@ -178,7 +180,7 @@ export default function LadderPage() {
       {data?.you && data.you.rank > data.top.length ? (
         <div className="mt-4 flex items-center gap-3 rounded-2xl bg-warm/12 px-4 py-3 ring-1 ring-warm/25">
           <span className="tabular w-7 text-sm font-semibold text-warm">{data.you.rank}</span>
-          <p className="flex-1 text-sm text-chalk">You</p>
+          <p className="flex-1 text-sm text-chalk">{t.ladderYou}</p>
           <span className="tabular text-sm font-semibold text-chalk">
             {data.you.score.toLocaleString()}
           </span>
@@ -186,8 +188,7 @@ export default function LadderPage() {
       ) : null}
 
       <p className="mt-8 px-2 text-center text-[11px] leading-relaxed text-dim">
-        Every score here was recomputed by the server from the run&rsquo;s recorded inputs. A
-        device cannot report a score it did not play.
+        {t.ladderFooter}
       </p>
 
     </main>

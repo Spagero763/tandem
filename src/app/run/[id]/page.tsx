@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 
 import { use, useEffect, useState } from 'react'
 
+import { useCopy } from '@/components/CopyProvider'
 import { TICK_HZ } from '@/lib/sim/constants'
 
 interface Scored {
@@ -34,18 +35,19 @@ interface Verification {
   inputs: string
 }
 
-const ROWS: { key: keyof Scored; label: string }[] = [
-  { key: 'score', label: 'Score' },
-  { key: 'motes', label: 'Motes' },
-  { key: 'bestCombo', label: 'Best combo' },
-  { key: 'grazes', label: 'Grazes' },
-  { key: 'integrity', label: 'Integrity left' },
-  { key: 'ticks', label: 'Ticks' },
-  { key: 'checksum', label: 'Checksum' },
-]
-
 export default function RunPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const t = useCopy()
+
+  const rows: { key: keyof Scored; label: string }[] = [
+    { key: 'score', label: t.receiptScore },
+    { key: 'motes', label: t.receiptMotes },
+    { key: 'bestCombo', label: t.receiptCombo },
+    { key: 'grazes', label: t.receiptGrazes },
+    { key: 'integrity', label: t.receiptIntegrity },
+    { key: 'ticks', label: t.receiptTicks },
+    { key: 'checksum', label: t.receiptChecksum },
+  ]
 
   const [data, setData] = useState<Verification | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,18 +60,18 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
         const response = await fetch(`/api/run/${id}`, { cache: 'no-store' })
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as { error?: string }
-          throw new Error(body.error ?? 'This run could not be loaded.')
+          throw new Error(body.error ?? t.receiptMissing)
         }
         if (!cancelled) setData((await response.json()) as Verification)
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Something went wrong.')
+        if (!cancelled) setError(cause instanceof Error ? cause.message : t.errGeneric)
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, t])
 
   return (
     <main
@@ -77,10 +79,9 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
       style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
     >
       <header>
-        <h1 className="display text-2xl text-chalk">Run receipt</h1>
+        <h1 className="display text-2xl text-chalk">{t.receiptTitle}</h1>
         <p className="mt-1 text-xs leading-relaxed text-dim">
-          Every number below was recomputed just now by replaying this run&rsquo;s recorded
-          inputs.
+          {t.receiptBlurb}
         </p>
       </header>
 
@@ -107,25 +108,23 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
             }`}
           >
             <p className={`text-sm font-semibold ${data.agrees ? 'text-cool' : 'text-shard'}`}>
-              {data.agrees ? 'Replay matches the ladder' : 'Replay disagrees with the ladder'}
+              {data.agrees ? t.receiptAgrees : t.receiptDisagrees}
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-muted">
-              {data.agrees
-                ? 'The stored score is exactly what these inputs produce on this course.'
-                : 'This run is flagged. The replayed score is the one that counts.'}
+              {data.agrees ? t.receiptAgreesBlurb : t.receiptDisagreesBlurb}
             </p>
           </motion.div>
 
           <dl className="mt-6 space-y-2">
             <div className="flex items-baseline justify-between px-1 pb-1">
-              <dt className="text-[10px] tracking-[0.18em] text-dim uppercase">Field</dt>
+              <dt className="text-[10px] tracking-[0.18em] text-dim uppercase">{t.receiptField}</dt>
               <dd className="flex gap-6 text-[10px] tracking-[0.18em] text-dim uppercase">
-                <span className="w-20 text-right">Stored</span>
-                <span className="w-20 text-right">Replayed</span>
+                <span className="w-20 text-right">{t.receiptStored}</span>
+                <span className="w-20 text-right">{t.receiptReplayed}</span>
               </dd>
             </div>
 
-            {ROWS.map(({ key, label }) => {
+            {rows.map(({ key, label }) => {
               const stored = data.stored[key]
               const replayed = data.replayed[key]
               const same = stored === replayed
@@ -153,22 +152,19 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
           </dl>
 
           <section className="mt-8 space-y-2 text-xs text-muted">
-            <Line label="Player" value={data.run.handle} />
-            <Line label="Heat" value={data.run.heatId} />
-            <Line label="Course seed" value={data.seed} mono />
-            <Line label="Rules version" value={`v${data.run.rulesVersion}`} />
+            <Line label={t.receiptPlayer} value={data.run.handle} />
+            <Line label={t.receiptHeat} value={data.run.heatId} />
+            <Line label={t.receiptSeed} value={data.seed} mono />
+            <Line label={t.receiptRules} value={`v${data.run.rulesVersion}`} />
             <Line
-              label="Run length"
-              value={`${(data.replayed.ticks / TICK_HZ).toFixed(1)}s of ${data.replayed.survived ? 'a finished heat' : 'an ended run'}`}
+              label={t.receiptLength}
+              value={`${(data.replayed.ticks / TICK_HZ).toFixed(1)}s · ${data.replayed.survived ? t.receiptFinished : t.receiptEnded}`}
             />
-            <Line label="Replay size" value={`${(data.inputs.length / 1024).toFixed(1)} KB`} />
+            <Line label={t.receiptSize} value={`${(data.inputs.length / 1024).toFixed(1)} KB`} />
           </section>
 
           <p className="mt-8 rounded-xl bg-ink-800/70 px-4 py-3 text-[11px] leading-relaxed text-dim">
-            The course is generated from the seed above, so it is identical for everyone who
-            played this heat. The replay is the exact sequence of thumb positions, one per tick.
-            Together they determine the score completely, which is why the device that played the
-            run never gets to report it.
+            {t.receiptExplainer}
           </p>
         </>
       ) : null}

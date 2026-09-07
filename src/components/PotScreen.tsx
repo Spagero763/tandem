@@ -3,6 +3,7 @@
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
 
+import { useCopy } from '@/components/CopyProvider'
 import { usePlayer } from '@/components/PlayerProvider'
 import { describeError, formatNim, nimToLuna, sendNim, stakeNim } from '@/lib/nimiq/client'
 import { describeEvmError, sendUsdt } from '@/lib/nimiq/evm'
@@ -46,6 +47,7 @@ async function fetchPot(): Promise<PotData | null> {
 
 export function PotScreen() {
   const { player, insideNimiqPay, refresh } = usePlayer()
+  const t = useCopy()
 
   const [data, setData] = useState<PotData | null>(null)
   const [busy, setBusy] = useState<Busy>(null)
@@ -85,7 +87,7 @@ export function PotScreen() {
           body: JSON.stringify({ txHash, luna, message: contributionMemo(data.heatId) }),
         })
 
-        setNote(`Thanks. ${nim.toLocaleString()} NIM added to today's pot.`)
+        setNote(t.potThanks(nim.toLocaleString()))
         await load()
       } catch (cause) {
         setError(describeError(cause))
@@ -93,13 +95,13 @@ export function PotScreen() {
         setBusy(null)
       }
     },
-    [data, load],
+    [data, load, t],
   )
 
   const stake = useCallback(
     async (nim: number) => {
       if (!VALIDATOR) {
-        setError('Staking is not configured for this deployment yet.')
+        setError(t.errGeneric)
         return
       }
 
@@ -117,7 +119,7 @@ export function PotScreen() {
           body: JSON.stringify({ kind: 'patron', txHash, luna }),
         })
 
-        setNote(`Staked ${nim.toLocaleString()} NIM. Your stake stays yours.`)
+        setNote(t.potStaked(nim.toLocaleString()))
         await refresh()
       } catch (cause) {
         setError(describeError(cause))
@@ -125,12 +127,12 @@ export function PotScreen() {
         setBusy(null)
       }
     },
-    [refresh],
+    [refresh, t],
   )
 
   const buyFounder = useCallback(async () => {
     if (!FOUNDER_ADDRESS) {
-      setError('The Founder pack is not configured for this deployment yet.')
+      setError(t.errGeneric)
       return
     }
 
@@ -147,14 +149,14 @@ export function PotScreen() {
         body: JSON.stringify({ kind: 'founder', txHash }),
       })
 
-      setNote('Founder mark unlocked.')
+      setNote(t.potFounderDone)
       await refresh()
     } catch (cause) {
       setError(describeEvmError(cause))
     } finally {
       setBusy(null)
     }
-  }, [refresh])
+  }, [refresh, t])
 
   return (
     <main
@@ -162,9 +164,9 @@ export function PotScreen() {
       style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
     >
       <header>
-        <h1 className="display text-2xl text-chalk">Today&rsquo;s pot</h1>
+        <h1 className="display text-2xl text-chalk">{t.potTitle}</h1>
         <p className="mt-1 text-xs leading-relaxed text-dim">
-          Playing is free. Backers fund the prize and cannot win it.
+          {t.potBlurb}
         </p>
       </header>
 
@@ -180,7 +182,7 @@ export function PotScreen() {
         <p className="mt-2 text-xs tracking-[0.18em] text-dim uppercase">NIM</p>
         {data ? (
           <p className="mt-3 text-xs text-muted">
-            {data.backers} {data.backers === 1 ? 'backer' : 'backers'}
+            {t.potBackers(data.backers)}
             {data.address ? (
               <>
                 {' · '}
@@ -190,7 +192,7 @@ export function PotScreen() {
                   rel="noreferrer"
                   className="underline underline-offset-2 hover:text-chalk"
                 >
-                  verify on chain
+                  {t.potVerify}
                 </a>
               </>
             ) : null}
@@ -201,7 +203,7 @@ export function PotScreen() {
       {data && data.standings.length > 0 ? (
         <section className="mt-6">
           <h2 className="text-[11px] font-medium tracking-[0.18em] text-dim uppercase">
-            Paying out to
+            {t.potPayingOut}
           </h2>
           <ol className="mt-3 space-y-1.5">
             {data.standings.map((row) => (
@@ -229,14 +231,13 @@ export function PotScreen() {
 
       {!insideNimiqPay ? (
         <p className="mt-6 rounded-xl bg-ink-800/70 px-4 py-3 text-xs leading-relaxed text-muted">
-          Open Tandem inside Nimiq Pay to back the pot, stake, or buy the Founder pack. The
-          ladder and the arena work anywhere.
+          {t.potOutsideApp}
         </p>
       ) : null}
 
       <Section
-        title="Back the pot"
-        blurb="Sends NIM with an on-chain memo. It funds the prize for today's best players and buys you nothing in the game."
+        title={t.potBackTitle}
+        blurb={t.potBackBlurb}
       >
         <Amounts
           suffix="NIM"
@@ -248,8 +249,8 @@ export function PotScreen() {
       </Section>
 
       <Section
-        title="Become a Patron"
-        blurb="Stake NIM to a validator through Tandem. The stake stays yours and keeps earning; the mark next to your name is the only thing it changes here."
+        title={t.potPatronTitle}
+        blurb={t.potPatronBlurb}
       >
         <Amounts
           suffix="NIM"
@@ -260,17 +261,17 @@ export function PotScreen() {
         />
         {player?.patron ? (
           <p className="mt-3 text-xs text-cool">
-            You are a Patron, staking {formatNim(player.stakedLuna, 0)} NIM.
+            {t.potPatronActive(formatNim(player.stakedLuna, 0))}
           </p>
         ) : null}
       </Section>
 
       <Section
-        title="Founder pack"
-        blurb={`A one-off ${FOUNDER_PRICE} USDT on Polygon for a permanent mark. Cosmetic, like everything else here.`}
+        title={t.potFounderTitle}
+        blurb={t.potFounderBlurb(FOUNDER_PRICE)}
       >
         {player?.founder ? (
-          <p className="text-sm text-cool">You already have the Founder mark.</p>
+          <p className="text-sm text-cool">{t.potFounderOwned}</p>
         ) : (
           <button
             type="button"
@@ -278,13 +279,13 @@ export function PotScreen() {
             disabled={!player || !insideNimiqPay || busy !== null}
             className="min-h-11 w-full rounded-full bg-ghost/15 px-5 text-sm font-semibold text-ghost disabled:opacity-40"
           >
-            {busy === 'founder' ? 'Check your wallet…' : `Pay ${FOUNDER_PRICE} USDT on Polygon`}
+            {busy === 'founder' ? t.potWalletBusy : t.potFounderBuy(FOUNDER_PRICE)}
           </button>
         )}
       </Section>
 
       {!player ? (
-        <p className="mt-6 text-center text-xs text-dim">Sign in from the arena first.</p>
+        <p className="mt-6 text-center text-xs text-dim">{t.potSignInFirst}</p>
       ) : null}
 
     </main>

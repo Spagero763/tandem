@@ -3,6 +3,7 @@
 import { motion } from 'motion/react'
 import { useState } from 'react'
 
+import { useCopy } from '@/components/CopyProvider'
 import type { RunOutcome } from '@/game/useTandem'
 import { RUN_TICKS, TICK_HZ } from '@/lib/sim/constants'
 import { challengeLink, shareChallenge } from '@/lib/share'
@@ -41,7 +42,8 @@ export function ResultSheet({
   onSignIn,
   onAgain,
 }: Props) {
-  const [shareLabel, setShareLabel] = useState('Challenge a friend')
+  const t = useCopy()
+  const [shareLabel, setShareLabel] = useState<string | null>(null)
 
   const beatGhost = ghostScore !== null && outcome.score > ghostScore
   const seconds = outcome.ticks / TICK_HZ
@@ -49,15 +51,15 @@ export function ResultSheet({
   async function onShare() {
     if (!submission) return
     const result = await shareChallenge(
-      `I scored ${outcome.score.toLocaleString()} on today's Tandem heat. Beat my ghost.`,
+      t.shareText(outcome.score.toLocaleString()),
       challengeLink(submission.runId),
     )
     setShareLabel(
       result.method === 'copied'
-        ? 'Link copied'
+        ? t.resultCopied
         : result.method === 'shared'
-          ? 'Shared'
-          : 'Could not share',
+          ? t.resultShared
+          : t.resultShareFailed,
     )
   }
 
@@ -77,7 +79,7 @@ export function ResultSheet({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[11px] font-medium tracking-[0.18em] text-dim uppercase">
-              {outcome.survived ? 'Heat complete' : `Out at ${seconds.toFixed(1)}s`}
+              {outcome.survived ? t.resultComplete : t.resultOutAt(seconds.toFixed(1))}
             </p>
             <p className="tabular mt-1.5 text-5xl leading-none font-semibold text-chalk">
               {outcome.score.toLocaleString()}
@@ -86,7 +88,9 @@ export function ResultSheet({
 
           {submission?.rank ? (
             <div className="text-right">
-              <p className="text-[11px] font-medium tracking-[0.18em] text-dim uppercase">Rank</p>
+              <p className="text-[11px] font-medium tracking-[0.18em] text-dim uppercase">
+                {t.resultRank}
+              </p>
               <p className="tabular mt-1.5 text-3xl leading-none font-semibold text-warm">
                 {submission.rank}
                 <span className="text-base text-dim">/{submission.total}</span>
@@ -102,14 +106,14 @@ export function ResultSheet({
             transition={{ delay: 0.25 }}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-warm/12 px-3 py-1.5 text-xs font-medium text-warm"
           >
-            New personal best for this heat
+            {t.resultBest}
           </motion.p>
         ) : null}
 
         {ghostLabel && ghostScore !== null ? (
           <div className="mt-5 flex items-center justify-between rounded-2xl bg-ink-800/70 px-4 py-3">
             <span className="text-sm text-muted">
-              vs <span className="text-chalk">{ghostLabel}</span>
+              {t.resultVersus} <span className="text-chalk">{ghostLabel}</span>
             </span>
             <span className={`tabular text-sm font-semibold ${beatGhost ? 'text-cool' : 'text-shard'}`}>
               {beatGhost ? '+' : ''}
@@ -119,16 +123,15 @@ export function ResultSheet({
         ) : null}
 
         <dl className="mt-6 grid grid-cols-4 gap-3">
-          <Stat label="Motes" value={outcome.motes.toLocaleString()} />
-          <Stat label="Combo" value={`×${outcome.bestCombo}`} />
-          <Stat label="Grazes" value={outcome.grazes.toLocaleString()} />
-          <Stat label="Left" value={`${outcome.integrity}/3`} />
+          <Stat label={t.resultMotes} value={outcome.motes.toLocaleString()} />
+          <Stat label={t.resultCombo} value={`×${outcome.bestCombo}`} />
+          <Stat label={t.resultGrazes} value={outcome.grazes.toLocaleString()} />
+          <Stat label={t.resultLeft} value={`${outcome.integrity}/3`} />
         </dl>
 
         {submission?.mismatch ? (
           <p className="mt-5 rounded-xl bg-shard/10 px-3 py-2.5 text-xs leading-relaxed text-shard">
-            The server replayed this run and got a different score than your device reported. The
-            replayed score is the one that counts.
+            {t.resultMismatch}
           </p>
         ) : null}
 
@@ -145,10 +148,10 @@ export function ResultSheet({
                 disabled={signingIn}
                 className="w-full rounded-full bg-chalk py-3.5 text-sm font-semibold text-ink-950 disabled:opacity-60"
               >
-                {signingIn ? 'Check your wallet…' : 'Sign in to keep this score'}
+                {signingIn ? t.resultSigningIn : t.resultSignIn}
               </button>
               <p className="px-2 text-center text-[11px] leading-relaxed text-dim">
-                One signature. No account, no email, nothing to remember.
+                {t.resultSignInBlurb}
               </p>
             </>
           ) : submission ? (
@@ -157,7 +160,7 @@ export function ResultSheet({
               onClick={onShare}
               className="w-full rounded-full bg-ghost/15 py-3.5 text-sm font-semibold text-ghost"
             >
-              {shareLabel}
+              {shareLabel ?? t.resultShare}
             </button>
           ) : null}
 
@@ -171,12 +174,12 @@ export function ResultSheet({
                 : 'bg-ink-700 text-chalk hover:bg-ink-600'
             }`}
           >
-            {submitting ? 'Saving…' : 'Run it again'}
+            {submitting ? t.resultSaving : t.resultAgain}
           </button>
         </div>
 
         <p className="mt-4 text-center text-[11px] text-dim">
-          {RUN_TICKS / TICK_HZ}s heat · everyone plays the same course today
+          {t.resultFooter(RUN_TICKS / TICK_HZ)}
         </p>
       </motion.div>
     </motion.div>
