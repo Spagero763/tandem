@@ -71,6 +71,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Lets the device reporter tell a stalled bundle apart from a slow one.
+    ;(window as unknown as { __tandemHydrated?: boolean }).__tandemHydrated = true
+
     let cancelled = false
 
     void (async () => {
