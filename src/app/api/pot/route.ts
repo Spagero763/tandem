@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       backers: sql<number>`count(distinct ${potContributions.fromAddress})::int`,
     })
     .from(potContributions)
+    .where(eq(potContributions.heatId, heatId))
 
   const totalLuna = Number(totals[0]?.luna ?? 0)
 
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
       seenAt: potContributions.seenAt,
     })
     .from(potContributions)
+    .where(eq(potContributions.heatId, heatId))
     .orderBy(desc(potContributions.seenAt))
     .limit(8)
 
@@ -68,6 +70,7 @@ export async function GET(request: Request) {
 }
 
 const Contribution = z.object({
+  heatId: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
   txHash: z.string().trim().min(4).max(128),
   luna: z.number().int().positive().max(100_000_000_000),
   message: z.string().max(120).optional(),
@@ -102,6 +105,7 @@ export async function POST(request: Request) {
   await db
     .insert(potContributions)
     .values({
+      heatId: parsed.data.heatId,
       txHash: parsed.data.txHash,
       fromAddress: session.address,
       luna: parsed.data.luna,
@@ -113,6 +117,7 @@ export async function POST(request: Request) {
   const totals = await db
     .select({ luna: sql<number>`coalesce(sum(${potContributions.luna}), 0)::bigint` })
     .from(potContributions)
+    .where(eq(potContributions.heatId, parsed.data.heatId))
 
   return NextResponse.json({ ok: true, totalLuna: Number(totals[0]?.luna ?? 0) })
 }

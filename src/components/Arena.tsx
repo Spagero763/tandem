@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useRef } from 'react'
 
+import { useCopy } from '@/components/CopyProvider'
 import { useTandem, type Hud, type RunOutcome } from '@/game/useTandem'
 import { START_INTEGRITY } from '@/lib/sim/constants'
 
@@ -47,6 +48,7 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
     }
   }, [])
 
+  const t = useCopy()
   const { canvasRef, phase, countdown, pauses, pauseAllowance, start, resume } = useTandem({
     seed,
     ghostInputs,
@@ -119,14 +121,13 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
             className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-ink-950/70 backdrop-blur-sm"
           >
             <div className="max-w-[17rem] text-center">
-              <p className="display text-2xl text-chalk">One thumb. Two orbs.</p>
+              <p className="display text-2xl text-chalk">{t.arenaTitle}</p>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                Drag anywhere. The left orb follows you, the right orb mirrors you. Take the
-                motes, miss the shards.
+                {t.arenaBlurb}
               </p>
             </div>
             <span className="rounded-full bg-chalk px-8 py-3.5 text-sm font-semibold text-ink-950">
-              Start heat
+              {t.arenaStart}
             </span>
           </motion.button>
         ) : null}
@@ -140,7 +141,7 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="pointer-events-none absolute inset-0 flex items-center justify-center"
           >
-            <span className="display text-8xl text-chalk/90">{countdown > 0 ? countdown : 'GO'}</span>
+            <span className="display text-8xl text-chalk/90">{countdown > 0 ? countdown : t.arenaGo}</span>
           </motion.div>
         ) : null}
 
@@ -154,13 +155,12 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
             exit={{ opacity: 0 }}
             className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-ink-950/85 backdrop-blur-md"
           >
-            <p className="display text-2xl text-chalk">Paused</p>
+            <p className="display text-2xl text-chalk">{t.arenaPaused}</p>
             <p className="max-w-[16rem] text-center text-sm text-muted">
-              The heat stops when you leave the app. {pauseAllowance - pauses} of {pauseAllowance}{' '}
-              {pauseAllowance - pauses === 1 ? 'pause' : 'pauses'} left.
+              {t.arenaPausesLeft(pauseAllowance - pauses, pauseAllowance)}
             </p>
             <span className="rounded-full bg-chalk px-8 py-3.5 text-sm font-semibold text-ink-950">
-              Resume
+              {t.arenaResume}
             </span>
           </motion.button>
         ) : null}

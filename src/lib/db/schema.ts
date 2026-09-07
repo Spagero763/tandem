@@ -159,13 +159,23 @@ export const potContributions = pgTable(
   'pot_contributions',
   {
     txHash: text('tx_hash').primaryKey(),
+
+    /**
+     * The heat this contribution funds. Without it the pot is a rolling total
+     * with no defined amount to settle, so "today's pot" could never be paid
+     * out as a fixed number.
+     */
+    heatId: text('heat_id').notNull(),
     fromAddress: text('from_address').notNull(),
     luna: integer('luna').notNull(),
     message: text('message'),
     blockHeight: integer('block_height').notNull(),
     seenAt: timestamp('seen_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('pot_block_idx').on(table.blockHeight)],
+  (table) => [
+    index('pot_block_idx').on(table.blockHeight),
+    index('pot_heat_idx').on(table.heatId),
+  ],
 )
 
 /** Prizes paid out of the pot, each with its on-chain transaction. */
@@ -273,6 +283,7 @@ const SCHEMA_SQL = `
 
   CREATE TABLE IF NOT EXISTS pot_contributions (
     tx_hash text PRIMARY KEY,
+    heat_id text NOT NULL DEFAULT '',
     from_address text NOT NULL,
     luna integer NOT NULL,
     message text,
@@ -280,6 +291,8 @@ const SCHEMA_SQL = `
     seen_at timestamptz NOT NULL DEFAULT now()
   );
   CREATE INDEX IF NOT EXISTS pot_block_idx ON pot_contributions (block_height);
+  ALTER TABLE pot_contributions ADD COLUMN IF NOT EXISTS heat_id text NOT NULL DEFAULT '';
+  CREATE INDEX IF NOT EXISTS pot_heat_idx ON pot_contributions (heat_id);
 
   CREATE TABLE IF NOT EXISTS payouts (
     id text PRIMARY KEY,

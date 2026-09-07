@@ -58,6 +58,7 @@ page would say so.
 | Back the pot | Nimiq | `sendBasicTransactionWithData` |
 | Patron status | Nimiq | `sendNewStakerTransaction`, `sendStakeTransaction` |
 | Founder pack | Ethereum | `eth_sendTransaction`, USDT on Polygon |
+| Settling payouts | Nimiq | `sendBasicTransactionWithData` |
 | Ladder identity | Nimiq | address derived from the signing key |
 | Rate limiting | Nimiq Pay | `requestDeviceIdentifier` |
 | Language | Nimiq Pay | `window.nimiqPay.language` |
@@ -82,9 +83,17 @@ it. Patron and Founder are marks next to a name and nothing else.
 That separation is deliberate. A paid advantage in a scored game makes every
 score above yours ambiguous, which is the one thing a ladder cannot afford.
 
-Contributions are recorded by transaction hash, so replaying the same hash can
-never inflate the pot, and the pot address links out to a block explorer where
-the total can be checked without trusting this server.
+Contributions are recorded by transaction hash and tagged with the heat they
+fund, so replaying the same hash can never inflate the pot and each day settles
+a defined amount rather than a rolling total. The pot address links out to a
+block explorer where it can be checked without trusting this server.
+
+Settlement is done **from the pot wallet inside Nimiq Pay**, not by the server.
+No private key for the pot exists in this codebase or on the host: when the pot
+wallet signs in, the pot screen shows what yesterday owes and pays each place
+through the same approval dialog any player sees. Each payout is then recorded
+with its transaction hash and shown publicly, so the promise on the pot page is
+checkable rather than taken on trust.
 
 ## Running it
 

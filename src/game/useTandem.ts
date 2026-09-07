@@ -259,8 +259,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
    * recorded on the run.
    */
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState !== 'hidden') return
+    const onLeave = () => {
       if (phaseRef.current !== 'running' && phaseRef.current !== 'countdown') return
 
       pausesRef.current += 1
@@ -278,8 +277,24 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
       }
     }
 
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') onLeave()
+    }
+
+    /*
+     * iOS WebViews do not reliably fire visibilitychange when the user switches
+     * apps, so pagehide is listened for as well. The phase check above makes
+     * the handler idempotent: whichever fires first moves the run out of
+     * 'running', and the second one returns immediately rather than counting a
+     * second pause against the player.
+     */
     document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', onLeave)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', onLeave)
+    }
   }, [finish, setPhaseBoth])
 
   const handlePointer = useCallback((clientX: number) => {

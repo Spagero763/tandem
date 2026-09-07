@@ -10,6 +10,13 @@ export type Language = (typeof LANGUAGES)[number]
 export interface Copy {
   arenaLadder: string
   arenaPot: string
+  arenaTitle: string
+  arenaBlurb: string
+  arenaStart: string
+  arenaGo: string
+  arenaPaused: string
+  arenaResume: string
+  arenaPausesLeft: (left: number, total: number) => string
 
   resultComplete: string
   resultOutAt: (seconds: string) => string
@@ -111,6 +118,13 @@ const en: Copy = {
   arenaLadder: 'Ladder',
   arenaPot: 'Pot',
 
+  arenaTitle: 'One thumb. Two orbs.',
+  arenaBlurb: 'Drag anywhere. The left orb follows you, the right orb mirrors you. Take the motes, miss the shards.',
+  arenaStart: 'Start heat',
+  arenaGo: 'GO',
+  arenaPaused: 'Paused',
+  arenaResume: 'Resume',
+  arenaPausesLeft: (left: number, total: number) => `The heat stops when you leave the app. ${left} of ${total} ${left === 1 ? 'pause' : 'pauses'} left.`,
   resultComplete: 'Heat complete',
   resultOutAt: (seconds) => `Out at ${seconds}s`,
   resultRank: 'Rank',
@@ -222,6 +236,13 @@ const de: Copy = {
   arenaLadder: 'Rangliste',
   arenaPot: 'Topf',
 
+  arenaTitle: 'Ein Daumen. Zwei Kugeln.',
+  arenaBlurb: 'Zieh irgendwo. Die linke Kugel folgt dir, die rechte spiegelt dich. Sammle die Punkte, weiche den Splittern aus.',
+  arenaStart: 'Lauf starten',
+  arenaGo: 'LOS',
+  arenaPaused: 'Pausiert',
+  arenaResume: 'Weiter',
+  arenaPausesLeft: (left: number, total: number) => `Der Lauf stoppt, wenn du die App verlässt. Noch ${left} von ${total} ${left === 1 ? 'Pause' : 'Pausen'}.`,
   resultComplete: 'Lauf beendet',
   resultOutAt: (seconds) => `Aus bei ${seconds}s`,
   resultRank: 'Platz',
@@ -334,6 +355,13 @@ const es: Copy = {
   arenaLadder: 'Clasificación',
   arenaPot: 'Bote',
 
+  arenaTitle: 'Un pulgar. Dos orbes.',
+  arenaBlurb: 'Arrastra en cualquier parte. El orbe izquierdo te sigue, el derecho te refleja. Recoge las motas, esquiva las esquirlas.',
+  arenaStart: 'Empezar ronda',
+  arenaGo: 'YA',
+  arenaPaused: 'En pausa',
+  arenaResume: 'Continuar',
+  arenaPausesLeft: (left: number, total: number) => `La ronda se detiene si sales de la app. Te quedan ${left} de ${total} ${left === 1 ? 'pausa' : 'pausas'}.`,
   resultComplete: 'Ronda completada',
   resultOutAt: (seconds) => `Fuera a los ${seconds}s`,
   resultRank: 'Puesto',
@@ -446,6 +474,13 @@ const fr: Copy = {
   arenaLadder: 'Classement',
   arenaPot: 'Cagnotte',
 
+  arenaTitle: 'Un pouce. Deux orbes.',
+  arenaBlurb: 'Faites glisser n’importe où. L’orbe de gauche vous suit, celui de droite vous reflète. Prenez les éclats, évitez les fragments.',
+  arenaStart: 'Lancer la manche',
+  arenaGo: 'GO',
+  arenaPaused: 'En pause',
+  arenaResume: 'Reprendre',
+  arenaPausesLeft: (left: number, total: number) => `La manche s’arrête si vous quittez l’app. Il reste ${left} ${left === 1 ? 'pause' : 'pauses'} sur ${total}.`,
   resultComplete: 'Manche terminée',
   resultOutAt: (seconds) => `Éliminé à ${seconds}s`,
   resultRank: 'Rang',
@@ -558,6 +593,13 @@ const pt: Copy = {
   arenaLadder: 'Classificação',
   arenaPot: 'Prêmio',
 
+  arenaTitle: 'Um polegar. Duas esferas.',
+  arenaBlurb: 'Arraste em qualquer lugar. A esfera da esquerda te segue, a da direita te espelha. Pegue os fragmentos, desvie dos cacos.',
+  arenaStart: 'Iniciar rodada',
+  arenaGo: 'JÁ',
+  arenaPaused: 'Pausado',
+  arenaResume: 'Continuar',
+  arenaPausesLeft: (left: number, total: number) => `A rodada para se você sair do app. Restam ${left} de ${total} ${left === 1 ? 'pausa' : 'pausas'}.`,
   resultComplete: 'Rodada concluída',
   resultOutAt: (seconds) => `Fora aos ${seconds}s`,
   resultRank: 'Posição',

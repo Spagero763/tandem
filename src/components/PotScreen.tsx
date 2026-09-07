@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { useCopy } from '@/components/CopyProvider'
 import { usePlayer } from '@/components/PlayerProvider'
+import { Settlement } from '@/components/Settlement'
 import { describeError, formatNim, nimToLuna, sendNim, stakeNim } from '@/lib/nimiq/client'
 import { describeEvmError, sendUsdt } from '@/lib/nimiq/evm'
 import { contributionMemo, explorerAddressUrl } from '@/lib/pot'
@@ -34,6 +35,13 @@ const FOUNDER_ADDRESS = process.env.NEXT_PUBLIC_FOUNDER_ADDRESS ?? ''
 const FOUNDER_PRICE = '2'
 
 type Busy = null | 'back' | 'stake' | 'founder'
+
+/** The heat before the given one, so settlement always targets a closed day. */
+function previousHeat(heatId: string): string {
+  const date = new Date(`${heatId}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() - 1)
+  return date.toISOString().slice(0, 10)
+}
 
 /** The pot is informational; a failure here must not blank the screen. */
 async function fetchPot(): Promise<PotData | null> {
@@ -84,7 +92,12 @@ export function PotScreen() {
         await fetch('/api/pot', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ txHash, luna, message: contributionMemo(data.heatId) }),
+          body: JSON.stringify({
+            heatId: data.heatId,
+            txHash,
+            luna,
+            message: contributionMemo(data.heatId),
+          }),
         })
 
         setNote(t.potThanks(nim.toLocaleString()))
@@ -283,6 +296,8 @@ export function PotScreen() {
           </button>
         )}
       </Section>
+
+      {data ? <Settlement yesterday={previousHeat(data.heatId)} /> : null}
 
       {!player ? (
         <p className="mt-6 text-center text-xs text-dim">{t.potSignInFirst}</p>
