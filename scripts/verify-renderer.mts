@@ -19,6 +19,45 @@ function record(name: string) {
   calls.set(name, (calls.get(name) ?? 0) + 1)
 }
 
+/**
+ * Where the frame actually put things.
+ *
+ * Not crashing is a weak property: a renderer that draws the whole arena off
+ * the bottom of the screen throws nothing and passes every other check here.
+ * These record the points the renderer commits to, so the geometry can be
+ * asserted against the viewport it was measured for.
+ */
+interface Extent {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+  points: number
+}
+
+let extent: Extent | null = null
+
+function plot(x: number, y: number) {
+  if (!extent) return
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return
+  extent.minX = Math.min(extent.minX, x)
+  extent.maxX = Math.max(extent.maxX, x)
+  extent.minY = Math.min(extent.minY, y)
+  extent.maxY = Math.max(extent.maxY, y)
+  extent.points++
+}
+
+function startRecording(): Extent {
+  extent = {
+    minX: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+    points: 0,
+  }
+  return extent
+}
+
 function makeContext(): CanvasRenderingContext2D {
   const gradient = {
     addColorStop(offset: number, color: string) {
@@ -53,11 +92,18 @@ function makeContext(): CanvasRenderingContext2D {
     closePath: guard('closePath'),
     moveTo: guard('moveTo'),
     lineTo: guard('lineTo'),
-    arc: guard('arc'),
+    arc: (...args: number[]) => {
+      guard('arc')(...args)
+      plot(args[0], args[1])
+    },
     arcTo: guard('arcTo'),
     fill: guard('fill'),
     stroke: guard('stroke'),
-    drawImage: guard('drawImage'),
+    drawImage: (...args: unknown[]) => {
+      guard('drawImage')(...args)
+      // drawImage(image, dx, dy) or drawImage(image, dx, dy, dw, dh)
+      if (typeof args[1] === 'number' && typeof args[2] === 'number') plot(args[1], args[2])
+    },
     createLinearGradient: (...args: number[]) => {
       guard('createLinearGradient')(...args)
       return gradient
@@ -109,6 +155,7 @@ function makeCanvas(): HTMLCanvasElement {
     height: 0,
     style: {} as CSSStyleDeclaration,
     getContext: () => makeContext(),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
   }
   return canvas as unknown as HTMLCanvasElement
 }
@@ -148,6 +195,7 @@ for (const [name, width, height] of viewports) {
   try {
     const renderer = new ArenaRenderer(makeCanvas())
     renderer.resize(width, height)
+    const drawn = startRecording()
 
     const state = createSimState('heat-2026-09-06')
     const ghost = createSimState('heat-2026-09-06')
@@ -163,10 +211,36 @@ for (const [name, width, height] of viewports) {
     }
 
     check(`${name} (${width}×${height}) renders a full heat`, true)
+
+    /*
+     * Glow sprites and trails legitimately spill past the edges, so this is a
+     * sanity bound rather than a tight one: what it catches is an arena drawn
+     * off-screen entirely, or one collapsed into a corner.
+     */
+    const slack = Math.max(width, height)
+    const inBounds =
+      drawn.minX > -slack &&
+      drawn.maxX < width + slack &&
+      drawn.minY > -slack &&
+      drawn.maxY < height + slack
+
+    check(
+      `${name}: everything drawn stays near the viewport`,
+      inBounds,
+      `x ${drawn.minX.toFixed(0)}..${drawn.maxX.toFixed(0)}, y ${drawn.minY.toFixed(0)}..${drawn.maxY.toFixed(0)}`,
+    )
+
+    // The arena should use most of the screen it was measured for.
+    check(
+      `${name}: the arena fills the screen it was measured for`,
+      drawn.maxX - drawn.minX > width * 0.6 && drawn.maxY - drawn.minY > height * 0.4,
+      `spans ${(drawn.maxX - drawn.minX).toFixed(0)}×${(drawn.maxY - drawn.minY).toFixed(0)} of ${width}×${height}`,
+    )
   } catch (error) {
     check(`${name} (${width}×${height}) renders a full heat`, false, String(error))
   }
 }
+extent = null
 
 // Rendering before the first measurement must be a no-op, not a crash: the
 // animation loop starts before ResizeObserver has reported a size.

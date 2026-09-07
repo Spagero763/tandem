@@ -2,7 +2,7 @@ import 'server-only'
 
 import { getDb } from '@/lib/db'
 import { heats } from '@/lib/db/schema'
-import { RULES_VERSION } from '@/lib/sim/constants'
+import { RULES_VERSION, seedForHeat } from '@/lib/sim/constants'
 
 /**
  * A heat is one UTC day. Everyone who plays it plays the identical course, so
@@ -13,9 +13,7 @@ export function heatIdFor(date = new Date()): string {
   return date.toISOString().slice(0, 10)
 }
 
-export function seedFor(heatId: string): string {
-  return `heat-${heatId}`
-}
+export const seedFor = seedForHeat
 
 export function heatWindow(heatId: string): { startsAt: Date; endsAt: Date } {
   const startsAt = new Date(`${heatId}T00:00:00.000Z`)

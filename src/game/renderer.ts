@@ -17,6 +17,9 @@ const COLOR = {
   mote: '#fff4dd',
 } as const
 
+/** Entities start fading here so they leave the lane rather than blink out. */
+const EXIT_FADE_FROM = 0.9
+
 const TRAIL_LENGTH = 14
 
 interface Particle {
@@ -294,10 +297,22 @@ export class ArenaRenderer {
       // Entities fall at a constant rate, so the previous position is exact
       // rather than stored: interpolation costs nothing.
       const y = entity.y - entity.speed * TICK_SECONDS * (1 - alpha)
-      if (y < -0.2 || y > 1.2) continue
+
+      /*
+       * Stop at the foot of the lane rather than a fifth of a screen below it.
+       * The lane is a rounded panel with the page behind it, so anything drawn
+       * past y = 1 reads as an object that has escaped the board. The last
+       * stretch fades so it leaves rather than blinks out.
+       */
+      if (y < -0.2 || y > 1) continue
 
       const px = this.laneToPixelX(entity.lane, entity.x)
       const py = layout.laneTop + y * layout.laneHeight
+
+      const exiting = y > EXIT_FADE_FROM
+      if (exiting) {
+        context.globalAlpha = Math.max(0, (1 - y) / (1 - EXIT_FADE_FROM))
+      }
 
       if (entity.type === ENTITY_MOTE) {
         const radius = MOTE_RADIUS * layout.unit
@@ -338,6 +353,8 @@ export class ArenaRenderer {
         context.stroke()
         context.restore()
       }
+
+      if (exiting) context.globalAlpha = 1
     }
   }
 
@@ -472,10 +489,19 @@ export class ArenaRenderer {
     const layout = this.layout
     if (!layout) return 0.5
 
+    /*
+     * clientX is viewport-relative but the layout is canvas-relative, so the
+     * canvas offset has to come out first. They happen to be equal while the
+     * arena is the full-bleed top-level view, which is exactly why getting
+     * this wrong would survive until the first screen that isn't.
+     */
+    const canvasLeft = this.canvas.getBoundingClientRect?.().left ?? 0
+    const x = clientX - canvasLeft
+
     // The whole width drives the thumb, not just the left lane. The player
     // should be able to hold the phone naturally and drag anywhere.
     const usable = layout.width - layout.laneX[0] * 2
-    const value = (clientX - layout.laneX[0]) / usable
+    const value = (x - layout.laneX[0]) / usable
     return value < 0 ? 0 : value > 1 ? 1 : value
   }
 

@@ -8,9 +8,10 @@ import { Arena } from '@/components/Arena'
 import { useCopy } from '@/components/CopyProvider'
 import { usePlayer } from '@/components/PlayerProvider'
 import { ResultSheet, type Submission } from '@/components/ResultSheet'
-import type { RunOutcome } from '@/game/useTandem'
+import type { RunOutcome, RunPhase } from '@/game/useTandem'
 import { getDeviceIdentifier } from '@/lib/nimiq/client'
 import { decodeInputs, encodeInputs } from '@/lib/sim/codec'
+import { seedForHeat } from '@/lib/sim/constants'
 
 interface Ghost {
   kind: 'player' | 'trainer'
@@ -51,6 +52,7 @@ export default function Page() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [runKey, setRunKey] = useState(0)
+  const [phase, setPhase] = useState<RunPhase>('idle')
 
   const deviceHashRef = useRef<string | null>(null)
 
@@ -138,19 +140,32 @@ export default function Page() {
     void loadGhost()
   }, [loadGhost])
 
+  const playing = phase === 'countdown' || phase === 'running'
+
   return (
     <main className="fixed inset-0 flex flex-col">
       <Arena
         key={runKey}
-        seed={`heat-${heatId}`}
+        seed={seedForHeat(heatId)}
         ghostInputs={ghost?.inputs ?? null}
         ghostName={ghost?.label ?? null}
         onEnd={onEnd}
+        onPhaseChange={setPhase}
       />
 
+      {/*
+        * Hidden while a heat is under way. These sit along the bottom edge,
+        * which is exactly where the thumb lives, and a stray tap mid-run would
+        * navigate away and throw the run out.
+        */}
       <div
-        className="absolute right-4 z-10 flex gap-2"
-        style={{ bottom: 'calc(var(--safe-bottom) + 1rem)' }}
+        className="absolute right-4 z-10 flex gap-2 transition-opacity duration-300"
+        style={{
+          bottom: 'calc(var(--safe-bottom) + 1rem)',
+          opacity: playing ? 0 : 1,
+          pointerEvents: playing ? 'none' : 'auto',
+        }}
+        aria-hidden={playing}
       >
         <Link
           href="/ladder"

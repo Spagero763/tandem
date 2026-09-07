@@ -68,6 +68,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
   const frameRef = useRef(0)
   const phaseRef = useRef<RunPhase>('idle')
   const pausesRef = useRef(0)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Callbacks are read through refs so the animation loop never has to be torn
   // down and rebuilt when a parent re-renders.
@@ -83,6 +84,13 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     setPhase(next)
   }, [])
 
+  /*
+   * A state exists from mount, not from the first tap, so the arena renders the
+   * course behind the idle card. Without it the canvas is never painted and the
+   * first thing anyone sees is a flat empty screen.
+   */
+  if (stateRef.current === null) stateRef.current = createSimState(seed)
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -91,7 +99,10 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     rendererRef.current = renderer
 
     const parent = canvas.parentElement
-    if (!parent) return
+    if (!parent) {
+      rendererRef.current = null
+      return
+    }
 
     const applySize = () => {
       const rect = parent.getBoundingClientRect()
@@ -214,22 +225,42 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     return () => cancelAnimationFrame(frameRef.current)
   }, [])
 
+  const clearCountdown = useCallback(() => {
+    if (countdownTimerRef.current === null) return
+    clearInterval(countdownTimerRef.current)
+    countdownTimerRef.current = null
+  }, [])
+
   const beginCountdown = useCallback(() => {
+    // Never leave a previous countdown running: resuming twice in quick
+    // succession would otherwise have two intervals racing the same phase.
+    clearCountdown()
+
     setPhaseBoth('countdown')
     setCountdown(3)
 
     let remaining = 3
-    const timer = setInterval(() => {
+    countdownTimerRef.current = setInterval(() => {
       remaining -= 1
       setCountdown(remaining)
-      if (remaining <= 0) {
-        clearInterval(timer)
-        lastTimeRef.current = 0
-        accumulatorRef.current = 0
-        setPhaseBoth('running')
-      }
+      if (remaining > 0) return
+
+      clearCountdown()
+
+      /*
+       * The player may have left during the countdown, which pauses the run.
+       * Without this check the interval would start the run anyway, behind the
+       * pause overlay, while they were still in another app.
+       */
+      if (phaseRef.current !== 'countdown') return
+
+      lastTimeRef.current = 0
+      accumulatorRef.current = 0
+      setPhaseBoth('running')
     }, 700)
-  }, [setPhaseBoth])
+  }, [clearCountdown, setPhaseBoth])
+
+  useEffect(() => clearCountdown, [clearCountdown])
 
   const start = useCallback(() => {
     const renderer = rendererRef.current
@@ -262,6 +293,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     const onLeave = () => {
       if (phaseRef.current !== 'running' && phaseRef.current !== 'countdown') return
 
+      clearCountdown()
       pausesRef.current += 1
       setPauses(pausesRef.current)
 
@@ -295,7 +327,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onLeave)
     }
-  }, [finish, setPhaseBoth])
+  }, [clearCountdown, finish, setPhaseBoth])
 
   const handlePointer = useCallback((clientX: number) => {
     const renderer = rendererRef.current

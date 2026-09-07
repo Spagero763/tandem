@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3200",
     "build": "next build",
-    "start": "next start",
+    "dev": "next dev -H 0.0.0.0 -p 3200",
+    "inspect": "tsx scripts/inspect-client.mts",
     "lint": "eslint",
-    "verify:crypto": "tsx scripts/verify-nimiq-crypto.ts",
-    "verify:sim": "tsx scripts/verify-sim.ts",
-    "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts",
+    "start": "next start",
     "typecheck": "tsc --noEmit",
+    "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts",
+    "verify:api": "tsx scripts/verify-api.mts",
+    "verify:crypto": "tsx scripts/verify-nimiq-crypto.ts",
     "verify:renderer": "tsx scripts/verify-renderer.mts",
-    "verify:api": "tsx scripts/verify-api.mts"
+    "verify:sim": "tsx scripts/verify-sim.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

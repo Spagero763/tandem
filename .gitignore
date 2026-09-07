@@ -49,3 +49,6 @@ next-env.d.ts
 
 # but do ship the template
 !.env.example
+
+# screenshots from the client inspector
+/screenshots

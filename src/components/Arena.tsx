@@ -1,21 +1,24 @@
 'use client'
 
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 import { useCopy } from '@/components/CopyProvider'
-import { useTandem, type Hud, type RunOutcome } from '@/game/useTandem'
-import { START_INTEGRITY } from '@/lib/sim/constants'
+import { useTandem, type Hud, type RunOutcome, type RunPhase } from '@/game/useTandem'
+import { RUN_TICKS, START_INTEGRITY, TICK_HZ } from '@/lib/sim/constants'
+
+/** Seconds in a full heat, so the timer bar tracks the real run length. */
+const RUN_SECONDS = RUN_TICKS / TICK_HZ
 
 interface Props {
   seed: string
   ghostInputs?: number[] | null
   ghostName?: string | null
   onEnd: (outcome: RunOutcome) => void
-  autoStart?: boolean
+  onPhaseChange?: (phase: RunPhase) => void
 }
 
-export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
+export function Arena({ seed, ghostInputs, ghostName, onEnd, onPhaseChange }: Props) {
   const scoreRef = useRef<HTMLSpanElement | null>(null)
   const multiplierRef = useRef<HTMLSpanElement | null>(null)
   const timerRef = useRef<HTMLDivElement | null>(null)
@@ -33,7 +36,7 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
       multiplierRef.current.textContent = hud.multiplier > 1 ? `×${hud.multiplier}` : ''
     }
     if (timerRef.current) {
-      timerRef.current.style.transform = `scaleX(${Math.max(0, hud.secondsLeft / 60)})`
+      timerRef.current.style.transform = `scaleX(${Math.max(0, hud.secondsLeft / RUN_SECONDS)})`
     }
     if (ghostRef.current && hud.ghostScore !== null) {
       const delta = hud.score - hud.ghostScore
@@ -55,6 +58,10 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd }: Props) {
     onHud,
     onEnd,
   })
+
+  useEffect(() => {
+    onPhaseChange?.(phase)
+  }, [phase, onPhaseChange])
 
   return (
     <div className="relative h-full w-full overflow-hidden">

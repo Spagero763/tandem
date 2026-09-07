@@ -31,6 +31,17 @@ export const GRAZE_RADIUS = 0.115
 /** Hits before the run ends. */
 export const START_INTEGRITY = 3
 
+/**
+ * The course seed for a heat.
+ *
+ * Lives beside the simulation rather than in the server-only heat module
+ * because the client generates the same course locally: if these two ever
+ * disagreed, a player would be scored against a course they never played.
+ */
+export function seedForHeat(heatId: string): string {
+  return `heat-${heatId}`
+}
+
 /** Entities despawn once fully past the orb line. */
 export const DESPAWN_Y = 1.15
 
