@@ -26,6 +26,7 @@ interface Props {
   ghostScore: number | null
   signedIn: boolean
   signingIn: boolean
+  insideNimiqPay: boolean
   onSignIn: () => void
   onAgain: () => void
 }
@@ -39,6 +40,7 @@ export function ResultSheet({
   ghostScore,
   signedIn,
   signingIn,
+  insideNimiqPay,
   onSignIn,
   onAgain,
 }: Props) {
@@ -145,13 +147,13 @@ export function ResultSheet({
               <button
                 type="button"
                 onClick={onSignIn}
-                disabled={signingIn}
-                className="w-full rounded-full bg-chalk py-3.5 text-sm font-semibold text-ink-950 disabled:opacity-60"
+                disabled={signingIn || !insideNimiqPay}
+                className="w-full rounded-full bg-chalk py-3.5 text-sm font-semibold text-ink-950 disabled:opacity-40"
               >
                 {signingIn ? t.resultSigningIn : t.resultSignIn}
               </button>
               <p className="px-2 text-center text-[11px] leading-relaxed text-dim">
-                {t.resultSignInBlurb}
+                {insideNimiqPay ? t.resultSignInBlurb : t.errOutsideApp}
               </p>
             </>
           ) : submission ? (

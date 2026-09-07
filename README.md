@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tandem
 
-## Getting Started
+One thumb. Two orbs. Sixty seconds.
 
-First, run the development server:
+A daily arcade heat that runs inside Nimiq Pay. Everyone who plays on a given
+day plays the exact same generated course, so the ladder is a comparison of
+skill rather than of luck. Your score is not something your phone reports. It
+is something the server works out for itself.
+
+## The idea
+
+You control two orbs with one thumb. They move together, mirrored around the
+centre line, which means every gap you steer into for one is a gap you steer
+the other one out of. Motes are picked up, shards are avoided, and passing
+close to a shard without touching it builds a graze combo that is worth more
+than playing safe.
+
+A heat lasts sixty seconds and resets at midnight UTC.
+
+## Scores are replayed, not reported
+
+The usual way a web game gets its leaderboard cheated is that the client posts
+a number and the server writes it down. Tandem does not accept numbers.
+
+What the client sends is the **inputs**: one quantised thumb position per tick,
+3600 of them for a full heat, encoded to about 9 KB. The server re-runs the
+simulation from the day's seed against those inputs and writes down the score
+*it* computed. The client also sends what it thought the score was, which is
+used for exactly one thing: if the two disagree, the run is flagged and the
+replayed score is the one that counts.
+
+This works because the simulation is deterministic and lives in one module,
+[`src/lib/sim/`](src/lib/sim/), imported by both the browser that renders a run
+and the server that re-scores it. There is no second implementation to drift.
+
+Three properties make it hold up, and each one is a test rather than a claim:
+
+- **Determinism.** The same seed and inputs always produce the same score,
+  checksum and tick count.
+- **Fairness.** Every wave leaves at least one survivable thumb position, every
+  mote is reachable without taking a hit, and no two waves ever occupy the orb
+  line at once. A loss is always the player's.
+- **Tamper evidence.** Editing a replay changes the score the server derives
+  from it. Replaying against the wrong seed does not reproduce the score. A
+  truncated replay cannot claim the survival bonus. Thumb speed is clamped per
+  tick, so teleporting between gaps is not expressible as input.
+
+Every run gets a public receipt at `/run/<id>` which re-scores it from its
+stored inputs **on every request** and shows the stored and replayed numbers
+side by side. Ladder rows link straight to it. If the two ever disagreed, the
+page would say so.
+
+## Nimiq Pay integration
+
+| Feature | Provider | Method |
+| --- | --- | --- |
+| Sign in | Nimiq | `sign` |
+| Back the pot | Nimiq | `sendBasicTransactionWithData` |
+| Patron status | Nimiq | `sendNewStakerTransaction`, `sendStakeTransaction` |
+| Founder pack | Ethereum | `eth_sendTransaction`, USDT on Polygon |
+| Ladder identity | Nimiq | address derived from the signing key |
+| Rate limiting | Nimiq Pay | `requestDeviceIdentifier` |
+| Language | Nimiq Pay | `window.nimiqPay.language` |
+
+**Sign-in is one dialog.** The server derives your address from the public key
+that produced the signature, so there is no separate account-listing prompt
+before it. A signature from a different key cannot claim your address.
+
+**Sign-in happens after a run, not before one.** Nobody should have to approve
+a wallet dialog to find out whether they like the game. Play first; if the
+score is worth keeping, one signature keeps it.
+
+## The pot
+
+Playing is free and always will be.
+
+Nobody pays to enter, paying nothing never costs you a place, and a
+contribution buys no advantage of any kind: not a retry, not a head start, not
+a multiplier. Backers fund a prize for the day's best players and cannot win
+it. Patron and Founder are marks next to a name and nothing else.
+
+That separation is deliberate. A paid advantage in a scored game makes every
+score above yours ambiguous, which is the one thing a ladder cannot afford.
+
+Contributions are recorded by transaction hash, so replaying the same hash can
+never inflate the pot, and the pot address links out to a block explorer where
+the total can be checked without trusting this server.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev --host      # -H 0.0.0.0 -p 3200
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With no `DATABASE_URL` set it runs on PGlite, real Postgres compiled to
+WebAssembly, stored in `.pglite/`. A fresh clone needs no database setup. Set
+`DATABASE_URL` to run against Postgres instead; the schema bootstraps itself
+either way.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To load it in Nimiq Pay, put the printed Network URL (for example
+`http://192.168.1.42:3200`) into the Custom URL field under Mini Apps, with the
+phone on the same network. Long-press the settings button for ten seconds to
+reach the dev menu and switch to testnet, where free NIM is available for
+testing payments and staking.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Configuration
 
-## Learn More
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string. Omit for local PGlite. |
+| `SESSION_SECRET` | Signs session cookies. |
+| `NEXT_PUBLIC_POT_ADDRESS` | Nimiq address the pot is collected at. |
+| `NEXT_PUBLIC_VALIDATOR_ADDRESS` | Validator that Patron staking delegates to. |
+| `NEXT_PUBLIC_FOUNDER_ADDRESS` | Polygon address that receives the Founder payment. |
 
-To learn more about Next.js, take a look at the following resources:
+Each of these degrades to a disabled button with an explanation rather than a
+crash when it is unset.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verifying it
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm verify        # crypto, simulation, renderer
+pnpm verify:api    # end-to-end, needs a dev server running
+pnpm typecheck
+pnpm lint
+```
 
-## Deploy on Vercel
+`pnpm verify` checks the Nimiq address derivation and signature verification
+against `@nimiq/core` over 200 random keypairs, then proves the three
+simulation properties above across six seeds.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`pnpm verify:api` signs in with a real Nimiq keypair, plays a heat, and then
+tries to cheat: claiming an inflated score, submitting an edited replay,
+padding a replay past the end of a run, submitting to a closed heat, reusing a
+sign-in code, signing with somebody else's key, and posting anonymously.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Layout
+
+```
+src/lib/sim/        the simulation, shared verbatim by client and server
+src/lib/nimiq/      address derivation, signatures, wallet and EVM clients
+src/game/           renderer and the frame loop
+src/app/api/        auth, run submission, ladder, ghosts, pot, receipts
+src/components/     screens
+scripts/            the verification suites
+```
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

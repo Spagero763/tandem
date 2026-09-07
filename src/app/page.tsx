@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Arena } from '@/components/Arena'
+import { useCopy } from '@/components/CopyProvider'
 import { usePlayer } from '@/components/PlayerProvider'
 import { ResultSheet, type Submission } from '@/components/ResultSheet'
 import type { RunOutcome } from '@/game/useTandem'
@@ -40,7 +41,8 @@ async function fetchGhost(heatId: string): Promise<Ghost | null> {
 }
 
 export default function Page() {
-  const { player, signIn, signingIn } = usePlayer()
+  const { player, signIn, signingIn, insideNimiqPay } = usePlayer()
+  const t = useCopy()
 
   const [heatId] = useState(todayHeat)
   const [ghost, setGhost] = useState<Ghost | null>(null)
@@ -90,18 +92,18 @@ export default function Page() {
         const data = (await response.json().catch(() => ({}))) as Submission & { error?: string }
 
         if (!response.ok) {
-          setSubmitError(data.error ?? 'Could not save that run.')
+          setSubmitError(data.error ?? t.errGeneric)
           return
         }
 
         setSubmission(data)
       } catch {
-        setSubmitError('Could not reach the ladder. Your run was not saved.')
+        setSubmitError(t.errGeneric)
       } finally {
         setSubmitting(false)
       }
     },
-    [heatId],
+    [heatId, t],
   )
 
   const onEnd = useCallback(
@@ -146,13 +148,23 @@ export default function Page() {
         onEnd={onEnd}
       />
 
-      <Link
-        href="/ladder"
-        className="absolute right-4 z-10 rounded-full bg-ink-800/80 px-4 py-2 text-xs font-medium text-muted backdrop-blur"
+      <div
+        className="absolute right-4 z-10 flex gap-2"
         style={{ bottom: 'calc(var(--safe-bottom) + 1rem)' }}
       >
-        Ladder
-      </Link>
+        <Link
+          href="/ladder"
+          className="flex min-h-11 items-center rounded-full bg-ink-800/80 px-4 text-xs font-medium text-muted backdrop-blur"
+        >
+          {t.arenaLadder}
+        </Link>
+        <Link
+          href="/pot"
+          className="flex min-h-11 items-center rounded-full bg-ink-800/80 px-4 text-xs font-medium text-muted backdrop-blur"
+        >
+          {t.arenaPot}
+        </Link>
+      </div>
 
       <AnimatePresence>
         {outcome ? (
@@ -165,6 +177,7 @@ export default function Page() {
             ghostScore={ghost?.score ?? null}
             signedIn={Boolean(player)}
             signingIn={signingIn}
+            insideNimiqPay={insideNimiqPay}
             onSignIn={onSignIn}
             onAgain={again}
           />
