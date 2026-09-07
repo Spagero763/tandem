@@ -29,6 +29,15 @@ export async function shareChallenge(text: string, url: string): Promise<ShareRe
     }
   }
 
+  /*
+   * Both of these are secure-context only. Over plain HTTP (which is how a
+   * mini app is loaded from a dev machine on the LAN) `navigator.clipboard` is
+   * undefined rather than throwing, so it needs checking rather than catching.
+   */
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    return { method: 'unavailable' }
+  }
+
   try {
     await navigator.clipboard.writeText(`${text} ${url}`)
     return { method: 'copied' }
