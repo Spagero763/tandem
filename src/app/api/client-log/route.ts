@@ -11,13 +11,13 @@ export const dynamic = 'force-dynamic'
  * screen sits on whatever the server rendered. This prints what the device
  * caught into the dev server's own output.
  *
- * Development only. It is a debugging aid, not a telemetry endpoint, and it
- * refuses to run in a production build.
+ * A debugging aid, not a telemetry endpoint. On in development, and in a
+ * production build only when NEXT_PUBLIC_DEVICE_REPORTER is set.
  */
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === 'production') {
-    return new NextResponse(null, { status: 404 })
-  }
+  const enabled =
+    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEVICE_REPORTER === '1'
+  if (!enabled) return new NextResponse(null, { status: 404 })
 
   const body = (await request.json().catch(() => null)) as {
     kind?: string

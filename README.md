@@ -107,11 +107,35 @@ WebAssembly, stored in `.pglite/`. A fresh clone needs no database setup. Set
 `DATABASE_URL` to run against Postgres instead; the schema bootstraps itself
 either way.
 
-To load it in Nimiq Pay, put the printed Network URL (for example
-`http://192.168.1.42:3200`) into the Custom URL field under Mini Apps, with the
-phone on the same network. Long-press the settings button for ten seconds to
-reach the dev menu and switch to testnet, where free NIM is available for
-testing payments and staking.
+### Testing on a phone
+
+Use the production bundle, not the dev server:
+
+```bash
+pnpm preview          # builds, then serves on 0.0.0.0:3300
+```
+
+Put the printed address (for example `http://192.168.1.42:3300`) into the
+Custom URL field under Mini Apps, with the phone on the same Wi-Fi network.
+
+The dev server is not usable from a phone here, and the way it fails is worth
+knowing because it looks like a broken app rather than a slow one. `next dev`
+ships roughly 4.9 MB of unminified JavaScript, including a devtools chunk
+larger than the entire production build. An iOS WebView does not get through
+it: every chunk returns 200, no error is thrown, and the page simply sits on
+the server-rendered HTML forever. Skeletons never resolve, the canvas never
+paints, and wallet features report themselves unavailable because that is the
+server's default answer. The production bundle is around 770 KB and hydrates
+in well under a second on the same device over the same network.
+
+Long-press the settings button for ten seconds to reach the dev menu and
+switch to testnet, where free NIM is available for testing payments and
+staking.
+
+If a device does misbehave, `NEXT_PUBLIC_DEVICE_REPORTER=1` turns on a
+reporter that beacons script errors, failed resource loads, and hydration
+timing from the phone into the server's own log. A WebView has no console you
+can reach, so without it a device-side failure is invisible.
 
 ### Configuration
 
@@ -131,9 +155,15 @@ crash when it is unset.
 ```bash
 pnpm verify        # crypto, simulation, renderer
 pnpm verify:api    # end-to-end, needs a dev server running
+pnpm inspect       # drives the real app in headless Chrome, saves screenshots
 pnpm typecheck
 pnpm lint
 ```
+
+`pnpm inspect` loads every screen in a real browser engine at a phone-shaped
+viewport, reports console errors, uncaught exceptions and failed requests, then
+plays a heat and screenshots it. It exists because reading the code missed
+several arena bugs that were obvious the moment anyone looked at a frame.
 
 `pnpm verify` checks the Nimiq address derivation and signature verification
 against `@nimiq/core` over 200 random keypairs, then proves the three
