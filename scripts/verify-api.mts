@@ -162,11 +162,19 @@ console.log('\nTampering with the replay')
 const edited = [...inputs]
 const editAt = Math.floor(edited.length * 0.35)
 for (let i = editAt; i < Math.min(editAt + 90, edited.length); i++) edited[i] = 0.5
+
+/*
+ * An edit that gets the player killed ends the run sooner, and a replay longer
+ * than the run it describes is rejected as padding by the check further down.
+ * Trim to what these inputs actually play out to, so this tests tampering
+ * rather than re-testing the padding rule.
+ */
 const editedTruth = simulate(seed, edited)
+const editedInputs = edited.slice(0, editedTruth.ticks)
 
 const tampered = await call('/api/run', {
   heatId,
-  inputs: encodeInputs(edited),
+  inputs: encodeInputs(editedInputs),
   claimedScore: truth.score,
   claimedChecksum: truth.checksum,
   pauses: 0,

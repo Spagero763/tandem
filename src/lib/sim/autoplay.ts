@@ -24,10 +24,24 @@ export function autoplay(seed: string, skill = 1): number[] {
   const inputs: number[] = []
 
   const blockRadius = SHARD_RADIUS + ORB_RADIUS + 0.015
-  const maxStep = MAX_THUMB_SPEED_PER_TICK * (0.5 + 0.5 * skill)
-  const reactionTicks = Math.round((1 - skill) * 9)
-  const jitter = (1 - skill) * 0.05
+  const maxStep = MAX_THUMB_SPEED_PER_TICK * (0.35 + 0.65 * skill)
+  const reactionTicks = Math.round((1 - skill) * 16)
   const band = ORB_RADIUS + SHARD_RADIUS
+
+  /*
+   * Weak play has to mean *failing*, not merely being slower.
+   *
+   * A bot that reads every wave and always steers to a safe gap does not get
+   * hit, so trimming its thumb speed and adding jitter smaller than the safety
+   * margin barely moves the score: half the skill range used to cost it 13%.
+   * That made every practice tier the same ghost wearing a different label.
+   *
+   * These are the two ways a person actually loses. They miss a wave
+   * arriving, and they chase a mote they should have let go.
+   */
+  const lapseChance = (1 - skill) ** 1.4 * 0.62
+  const greedChance = (1 - skill) ** 1.2 * 0.5
+  const jitter = (1 - skill) * 0.14
 
   let thumb = 0.5
   let target = 0.5
@@ -60,8 +74,18 @@ export function autoplay(seed: string, skill = 1): number[] {
         const motes = wave.filter((e) => e.type === ENTITY_MOTE).map((e) => e.thumbX)
         const safe = (x: number) => shards.every((s) => Math.abs(s - x) > blockRadius)
 
-        const mote = motes.filter(safe).sort((a, b) => Math.abs(a - thumb) - Math.abs(b - thumb))[0]
-        if (mote !== undefined) {
+        // Missed it. The thumb stays where it was and the wave arrives anyway.
+        const lapsed = lapseChance > 0 && noise.nextFloat() < lapseChance
+
+        // Went for the mote without checking what was next to it.
+        const greedy = greedChance > 0 && noise.nextFloat() < greedChance
+
+        const reachable = greedy ? motes : motes.filter(safe)
+        const mote = reachable.sort((a, b) => Math.abs(a - thumb) - Math.abs(b - thumb))[0]
+
+        if (lapsed) {
+          target = thumb
+        } else if (mote !== undefined) {
           target = mote
         } else {
           let best = thumb

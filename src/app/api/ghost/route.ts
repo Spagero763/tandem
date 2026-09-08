@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, ne } from 'drizzle-orm'
+import { and, asc, eq, gt, lte, ne } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 import { readSession } from '@/lib/auth/session'
@@ -23,10 +23,10 @@ export const dynamic = 'force-dynamic'
  * empty one.
  */
 const TRAINER_TIERS = [
-  { skill: 0.45, label: 'Trainer I' },
-  { skill: 0.62, label: 'Trainer II' },
-  { skill: 0.78, label: 'Trainer III' },
-  { skill: 0.94, label: 'Trainer IV' },
+  { skill: 0.2, label: 'Trainer I' },
+  { skill: 0.48, label: 'Trainer II' },
+  { skill: 0.72, label: 'Trainer III' },
+  { skill: 0.9, label: 'Trainer IV' },
 ] as const
 
 interface Trainer {
@@ -51,11 +51,16 @@ function trainerFor(seed: string, tier: number): Trainer {
   return trainer
 }
 
+/*
+ * Tuned against what these actually score, not against what the skill number
+ * looks like. A first run is worth a few hundred points, so a beginner meets a
+ * ghost in that range: the tiers used to start at roughly 8000, which is not a
+ * rival to chase but a demonstration that you are bad at the game.
+ */
 function pickTier(best: number | null): number {
-  if (best === null) return 1
-  if (best < 3000) return 0
-  if (best < 6000) return 1
-  if (best < 8500) return 2
+  if (best === null || best < 500) return 0
+  if (best < 1800) return 1
+  if (best < 5000) return 2
   return 3
 }
 
@@ -79,11 +84,17 @@ export async function GET(request: Request) {
   }
 
   /*
-   * Pick the player just ahead of you rather than the leader. Racing someone
-   * marginally better is the version of this that is worth repeating; racing
-   * the top of the ladder on your first run is just a demonstration that you
+   * Pick the player just ahead of you, and only if they are actually within
+   * reach. Racing someone marginally better is the version of this worth
+   * repeating; being handed the top of the ladder is a demonstration that you
    * are not the top of the ladder.
+   *
+   * The ceiling matters more than it looks. On a young ladder the only player
+   * above a beginner is often many times better, and "nearest above me" would
+   * hand them that run every time.
    */
+  const ceiling = best === null ? 0 : best * 2 + 300
+
   const rival =
     best === null
       ? []
@@ -102,36 +113,14 @@ export async function GET(request: Request) {
             and(
               eq(ladder.heatId, heatId),
               gt(ladder.score, best),
+              lte(ladder.score, ceiling),
               session ? ne(ladder.address, session.address) : undefined,
             ),
           )
           .orderBy(asc(ladder.score))
           .limit(1)
 
-  const leader =
-    rival.length > 0
-      ? rival
-      : await db
-          .select({
-            runId: ladder.runId,
-            score: ladder.score,
-            handle: players.handle,
-            address: ladder.address,
-            inputs: runs.inputs,
-          })
-          .from(ladder)
-          .innerJoin(players, eq(players.address, ladder.address))
-          .innerJoin(runs, eq(runs.id, ladder.runId))
-          .where(
-            and(
-              eq(ladder.heatId, heatId),
-              session ? ne(ladder.address, session.address) : undefined,
-            ),
-          )
-          .orderBy(desc(ladder.score))
-          .limit(1)
-
-  const chosen = leader[0]
+  const chosen = rival[0]
 
   if (chosen) {
     return NextResponse.json({
