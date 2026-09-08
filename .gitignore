@@ -52,3 +52,6 @@ next-env.d.ts
 
 # screenshots from the client inspector
 /screenshots
+
+.vercel
+.env*.local

@@ -2,6 +2,8 @@
 
 One thumb. Two orbs. Sixty seconds.
 
+**Play it: https://tandem-six-snowy.vercel.app**
+
 A daily arcade heat that runs inside Nimiq Pay. Everyone who plays on a given
 day plays the exact same generated course, so the ladder is a comparison of
 skill rather than of luck. Your score is not something your phone reports. It
