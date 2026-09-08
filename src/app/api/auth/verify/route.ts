@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { consumeNonce, loginMessage } from '@/lib/auth/nonce'
-import { createSession } from '@/lib/auth/session'
+import { ConfigError, createSession } from '@/lib/auth/session'
 import { getDb } from '@/lib/db'
 import { players } from '@/lib/db/schema'
 import { shortenAddress, toCompactAddress } from '@/lib/nimiq/address'
@@ -64,7 +64,19 @@ export async function POST(request: Request) {
       set: { lastSeenAt: new Date() },
     })
 
-  await createSession(address)
+  try {
+    await createSession(address)
+  } catch (cause) {
+    // A misconfigured deployment should say so plainly. The signature was
+    // valid; there is simply no key to sign a session with.
+    if (cause instanceof ConfigError) {
+      console.error(`
+  [config] ${cause.message}
+`)
+      return NextResponse.json({ error: cause.message }, { status: 503 })
+    }
+    throw cause
+  }
 
   return NextResponse.json({ address })
 }

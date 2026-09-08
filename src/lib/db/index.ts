@@ -5,6 +5,8 @@ import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 
 import { sql } from 'drizzle-orm'
 
+import { ConfigError } from '@/lib/auth/session'
+
 import { SCHEMA_STATEMENTS } from './schema'
 import * as schema from './schema'
 
@@ -38,8 +40,24 @@ async function connect(): Promise<Db> {
     return db as unknown as Db
   }
 
-  // No DATABASE_URL: fall back to an on-disk PGlite instance so a fresh clone
-  // runs with no setup at all.
+  /*
+   * No DATABASE_URL: fall back to an on-disk PGlite instance so a fresh clone
+   * runs with no setup at all.
+   *
+   * Never in production. PGlite stores its data on the local filesystem, which
+   * on a serverless host is empty on every cold start and read-only besides,
+   * so the fallback would appear to work and then lose every run, ladder place
+   * and pot contribution between requests.
+   */
+  if (process.env.NODE_ENV === 'production' && !process.env.PGLITE_DIR) {
+    throw new ConfigError(
+      'DATABASE_URL is not set. A production deployment needs a real Postgres ' +
+        'connection string; the local PGlite fallback is development only and ' +
+        'does not survive between requests on a serverless host. ' +
+        'Set PGLITE_DIR to use it deliberately when testing a production build.',
+    )
+  }
+
   const { PGlite } = await import('@electric-sql/pglite')
   const client = new PGlite(process.env.PGLITE_DIR ?? '.pglite')
   const db = drizzlePglite(client, { schema })

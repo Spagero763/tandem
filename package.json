@@ -7,7 +7,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3200",
     "inspect": "tsx scripts/inspect-client.mts",
     "lint": "eslint",
-    "preview": "next build && next start -H 0.0.0.0 -p 3300",
+    "preview": "tsx scripts/preview.mts",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts",

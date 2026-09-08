@@ -141,14 +141,25 @@ can reach, so without it a device-side failure is invisible.
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Postgres connection string. Omit for local PGlite. |
-| `SESSION_SECRET` | Signs session cookies. |
+| `DATABASE_URL` | Postgres connection string. Required in production; omit for local PGlite. |
+| `SESSION_SECRET` | Signs session cookies. Required in production, at least 32 characters. |
 | `NEXT_PUBLIC_POT_ADDRESS` | Nimiq address the pot is collected at. |
 | `NEXT_PUBLIC_VALIDATOR_ADDRESS` | Validator that Patron staking delegates to. |
 | `NEXT_PUBLIC_FOUNDER_ADDRESS` | Polygon address that receives the Founder payment. |
 
-Each of these degrades to a disabled button with an explanation rather than a
-crash when it is unset.
+The three addresses each degrade to a disabled button with an explanation
+rather than a crash when unset. The first two do not: a production build
+refuses to start a session without a signing key, and refuses to fall back to
+the on-disk database, because both would fail quietly and lose data rather
+than loudly. Set `PGLITE_DIR` to use the local database against a production
+build deliberately, which is what `pnpm preview` does.
+
+Session cookies are marked `Secure` based on whether the *connection* is
+HTTPS, read from `x-forwarded-proto`, rather than on whether this is a
+production build. Keying it off the build breaks sign-in on every production
+bundle served without TLS, which is exactly how a mini app is tested on a
+phone: the wallet signs, the cookie is set, and every request after it is
+anonymous again.
 
 ## Verifying it
 
