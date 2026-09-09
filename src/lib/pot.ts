@@ -3,7 +3,7 @@
  *
  * Deliberate design constraint: playing is free and always will be. Nobody
  * pays to enter, paying nothing never costs you a place, and a contribution
- * buys no advantage of any kind — not a retry, not a head start, not a
+ * buys no advantage of any kind: not a retry, not a head start, not a
  * multiplier. Backers fund a prize for the best players; they cannot win it.
  *
  * That separation is what keeps this a skill contest with a sponsored prize

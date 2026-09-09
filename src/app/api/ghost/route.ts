@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
  * there is nobody to race, so nobody comes back. These are bot runs over the
  * same course, at four honest difficulties, so a first-time player always has
  * someone alongside them. They are labelled as trainers everywhere they appear
- * and never enter the ladder — a padded leaderboard would be worth less than an
+ * and never enter the ladder: a padded leaderboard would be worth less than an
  * empty one.
  */
 const TRAINER_TIERS = [

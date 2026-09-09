@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * one-off pack in USDT on Polygon).
  *
  * Neither affects the ladder, the course, or the pot in any way. They are
- * marks next to a name, and that is the whole of it — a paid advantage in a
+ * marks next to a name, and that is the whole of it. A paid advantage in a
  * scored game would make every score above yours ambiguous.
  */
 const Claim = z.discriminatedUnion('kind', [

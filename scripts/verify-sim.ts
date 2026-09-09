@@ -1,11 +1,11 @@
 /**
  * Proves the three properties the whole product rests on:
  *
- *   1. Determinism  — the same seed and inputs always produce the same result,
+ *   1. Determinism:  the same seed and inputs always produce the same result,
  *                     which is what lets the server re-score a run it never saw.
- *   2. Fairness     — every wave leaves at least one survivable thumb position,
+ *   2. Fairness:     every wave leaves at least one survivable thumb position,
  *                     so a loss is always the player's, never the generator's.
- *   3. Tamper-evidence — editing a replay changes the score the server computes.
+ *   3. Tamper-evidence: editing a replay changes the score the server computes.
  *
  * Run with: pnpm tsx scripts/verify-sim.ts
  */
@@ -27,7 +27,7 @@ function check(name: string, ok: boolean, detail = '') {
   if (ok) console.log(`  PASS  ${name}`)
   else {
     failures++
-    console.log(`  FAIL  ${name}${detail ? ` — ${detail}` : ''}`)
+    console.log(`  FAIL  ${name}${detail ? ` - ${detail}` : ''}`)
   }
 }
 

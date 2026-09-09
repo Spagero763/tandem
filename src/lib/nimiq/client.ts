@@ -148,7 +148,7 @@ export async function addStake(luna: number): Promise<string> {
 
 /**
  * The device identifier is per-device, never per-user, so it is used only for
- * rate limiting and save slots — never as an identity. Identity comes from a
+ * rate limiting and save slots, never as an identity. Identity comes from a
  * signature over an address.
  */
 export async function getDeviceIdentifier(reason: string): Promise<string | null> {

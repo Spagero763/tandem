@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   }
 
   /*
-   * The address is derived from the public key that produced the signature —
+   * The address is derived from the public key that produced the signature,
    * never taken from the request. A client can claim any address it likes; only
    * this derivation decides which one it actually gets.
    */

@@ -15,8 +15,8 @@ import { createSimState, STATE_ALIVE, step } from './simulate'
  *
  * The orb cannot pass through a shard, so the game is played in two beats: hold
  * the line while a wave crosses, then slide to the next gap in the clear window
- * between waves. `skill` models a human imperfectly — a slower thumb, a delayed
- * commitment, and some aim jitter — because it stands in for a person both when
+ * between waves. `skill` models a human imperfectly, with a slower thumb, a delayed
+ * commitment, and some aim jitter, because it stands in for a person both when
  * tuning difficulty and when generating practice ghosts.
  */
 export function autoplay(seed: string, skill = 1): number[] {

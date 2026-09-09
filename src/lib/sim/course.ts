@@ -63,7 +63,7 @@ export function generateCourse(seed: string): CourseEntity[] {
   // Waves are laid out by when they *arrive* at the orb line, not when they
   // spawn. Later waves fall faster, so spacing the spawns evenly would let a
   // fast wave catch a slow one and put two independently-fair waves on the line
-  // at the same moment — a combination neither was checked against. Spacing
+  // at the same moment, a combination neither was checked against. Spacing
   // arrivals and solving backwards for the spawn removes that entirely.
   let arrival = 1.85
 

@@ -57,7 +57,7 @@ export async function rateLimit(
 
 /**
  * A coarse client identifier for unauthenticated routes. It is not a security
- * boundary — proxies share addresses and addresses can be rotated — only a way
+ * boundary (proxies share addresses, and addresses can be rotated), only a way
  * to make casual flooding cost something.
  */
 export function clientKey(request: Request, scope: string): string {

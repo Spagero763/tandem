@@ -1,7 +1,7 @@
 /**
  * Drives the arena renderer against a stubbed 2D context.
  *
- * This cannot tell us whether the arena looks good — only a phone can do that.
+ * This cannot tell us whether the arena looks good; only a phone can do that.
  * What it does catch, without a browser, is the whole class of failure that
  * would waste a device test: a typo in a canvas call, a null dereference on a
  * layout that hasn't been measured yet, or an exception thrown midway through a
@@ -177,7 +177,7 @@ function check(name: string, ok: boolean, detail = '') {
   if (ok) console.log(`  PASS  ${name}`)
   else {
     failures++
-    console.log(`  FAIL  ${name}${detail ? ` — ${detail}` : ''}`)
+    console.log(`  FAIL  ${name}${detail ? ` - ${detail}` : ''}`)
   }
 }
 

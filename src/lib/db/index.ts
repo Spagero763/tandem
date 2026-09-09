@@ -14,7 +14,7 @@ import * as schema from './schema'
  * One data layer, two drivers.
  *
  * Production runs on Neon. Local development runs on PGlite, which is real
- * Postgres compiled to WebAssembly rather than a mock — same SQL, same types,
+ * Postgres compiled to WebAssembly rather than a mock: same SQL, same types,
  * same Drizzle dialect. That matters more than convenience: an in-memory stub
  * hides exactly the bugs (constraint violations, upsert races, ordering) that
  * only show up against a real database, and it hides them until deploy day.

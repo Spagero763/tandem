@@ -190,7 +190,7 @@ export function PotScreen() {
         className="panel mt-5 rounded-3xl p-6 text-center"
       >
         <p className="tabular text-5xl leading-none font-semibold text-chalk">
-          {data ? formatNim(data.totalLuna, 0) : '—'}
+          {data ? formatNim(data.totalLuna, 0) : '…'}
         </p>
         <p className="mt-2 text-xs tracking-[0.18em] text-dim uppercase">NIM</p>
         {data ? (
