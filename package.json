@@ -6,6 +6,7 @@
     "build": "next build",
     "capture": "tsx scripts/capture.mts",
     "dev": "next dev -H 0.0.0.0 -p 3200",
+    "icon": "tsx scripts/icon.mts",
     "inspect": "tsx scripts/inspect-client.mts",
     "lint": "eslint",
     "preview": "tsx scripts/preview.mts",
