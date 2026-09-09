@@ -16,9 +16,10 @@
  * rather than a reward.
  */
 
-const BPM = 144
-const STEPS_PER_BAR = 16
-const SECONDS_PER_STEP = 60 / BPM / 4
+export const BPM = 144
+export const BARS_IN_LOOP = 4
+export const STEPS_PER_BAR = 16
+export const SECONDS_PER_STEP = 60 / BPM / 4
 
 /** How far ahead notes are queued, and how often we wake to queue them. */
 const LOOKAHEAD_SECONDS = 0.18
@@ -63,6 +64,15 @@ const LEAD = [0, -1, 2, -1, 1, -1, 3, -1, 2, -1, 1, -1, 3, -1, 2, 1]
 export class BeatMachine {
   private context: AudioContext
   private out: GainNode
+
+  /**
+   * Everything melodic runs through here, and the kick pulls it down on every
+   * hit. This is the whole reason a trap mix sounds solid rather than busy:
+   * the low end gets the beat to itself for a moment, then the chords swell
+   * back into the gap. Without it the pad and the 808 fight for the same
+   * space and the result is loud but mushy.
+   */
+  private duck: GainNode
   private timer: number | null = null
 
   private nextNoteTime = 0
@@ -82,6 +92,18 @@ export class BeatMachine {
     this.out = context.createGain()
     this.out.gain.value = 0
     this.out.connect(destination)
+
+    this.duck = context.createGain()
+    this.duck.gain.value = 1
+    this.duck.connect(this.out)
+  }
+
+  /** Pull the melodic bus down, then let it breathe back in. */
+  private pump(at: number): void {
+    const gain = this.duck.gain
+    gain.cancelScheduledValues(at)
+    gain.setValueAtTime(0.32, at)
+    gain.linearRampToValueAtTime(1, at + 0.19)
   }
 
   get running(): boolean {
@@ -137,12 +159,20 @@ export class BeatMachine {
   private playStep(step: number, at: number): void {
     const chord = PROGRESSION[this.bar]
 
-    if (KICK.has(step)) this.kick(at)
+    if (KICK.has(step)) {
+      this.kick(at)
+      this.pump(at)
+    }
     if (SNARE.has(step)) this.snare(at)
 
     // Hats carry the speed. Rolls appear as the run heats up, which is what
     // makes it feel fast rather than merely quick.
-    this.hat(at, OPEN_HAT.has(step) ? 0.09 : 0.055, OPEN_HAT.has(step) ? 0.055 : 0.02)
+    const onBeat = step % 4 === 0
+    this.hat(
+      at,
+      OPEN_HAT.has(step) ? 0.09 : onBeat ? 0.07 : 0.042,
+      OPEN_HAT.has(step) ? 0.055 : 0.02,
+    )
 
     if (this.intensity > 0.35 && (step === 7 || step === 15)) {
       const divisions = this.intensity > 0.7 ? 3 : 2
@@ -279,7 +309,7 @@ export class BeatMachine {
     envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration)
 
     filter.connect(envelope)
-    envelope.connect(this.out)
+    envelope.connect(this.duck)
 
     for (const frequency of frequencies) {
       const oscillator = this.context.createOscillator()
@@ -316,7 +346,7 @@ export class BeatMachine {
 
     oscillator.connect(filter)
     filter.connect(envelope)
-    envelope.connect(this.out)
+    envelope.connect(this.duck)
     oscillator.start(at)
     oscillator.stop(at + duration + 0.02)
   }

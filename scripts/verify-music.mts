@@ -9,7 +9,14 @@
  *
  * Run with: pnpm verify:music
  */
-import { PROGRESSION } from '../src/game/beat'
+import {
+  BARS_IN_LOOP,
+  BPM,
+  PROGRESSION,
+  SECONDS_PER_STEP,
+  STEPS_PER_BAR,
+} from '../src/game/beat'
+import { RUN_TICKS, TICK_HZ } from '../src/lib/sim/constants'
 import { SCALE } from '../src/game/audio'
 
 const NAMES = ['D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B', 'C', 'Db']
@@ -53,6 +60,30 @@ check('starts on the tonic', PROGRESSION[0].root % 12 === 0)
 check(
   'every chord is a distinct root',
   new Set(PROGRESSION.map((c) => ((c.root % 12) + 12) % 12)).size === PROGRESSION.length,
+)
+
+
+console.log('\nTiming')
+
+const loopSeconds = SECONDS_PER_STEP * STEPS_PER_BAR * BARS_IN_LOOP
+const heatSeconds = RUN_TICKS / TICK_HZ
+const loops = heatSeconds / loopSeconds
+
+console.log(`  note  ${BPM} BPM, ${loopSeconds.toFixed(3)}s per loop, ${heatSeconds}s per heat`)
+
+/*
+ * The loop landing exactly on the end of the heat is worth protecting. Let the
+ * tempo drift and the music stops mid phrase on every single run, which feels
+ * wrong long before anyone works out why.
+ */
+check(
+  `the loop divides the heat exactly (${loops.toFixed(3)} loops)`,
+  Math.abs(loops - Math.round(loops)) < 1e-9,
+  `${loops} is not a whole number`,
+)
+check(
+  'the heat is a whole number of bars',
+  Math.abs((heatSeconds / (SECONDS_PER_STEP * STEPS_PER_BAR)) % 1) < 1e-9,
 )
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) failed.\n`)
