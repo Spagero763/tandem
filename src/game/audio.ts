@@ -18,8 +18,16 @@ import { BeatMachine } from './beat'
 
 const STORAGE_KEY = 'tandem:muted'
 
-/** Pentatonic, so a fast combo run stays consonant however it lands. */
-const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
+/**
+ * D minor pentatonic, matching the key of the backing track.
+ *
+ * The major version of this was a semitone out against the chords underneath
+ * it, so every mote collected on a bar clashed with what was playing. Minor
+ * pentatonic has no note that can land wrong against any chord in the
+ * progression, which is what lets pickups fire at any speed and still sound
+ * deliberate.
+ */
+export const SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]
 
 function noteFrequency(step: number): number {
   const semitone = SCALE[Math.min(step, SCALE.length - 1)]
@@ -198,9 +206,10 @@ export class ArenaAudio {
           this.step = 0
           if (state.survived) {
             // A small rising figure, played once, for finishing the heat.
-            this.tone(392, 0.16, 'triangle', 0.24)
-            window.setTimeout(() => this.tone(523.25, 0.16, 'triangle', 0.24), 120)
-            window.setTimeout(() => this.tone(659.25, 0.42, 'triangle', 0.26), 240)
+            // D, F, A: the tonic chord of the backing track, arpeggiated.
+            this.tone(293.66, 0.16, 'triangle', 0.24)
+            window.setTimeout(() => this.tone(349.23, 0.16, 'triangle', 0.24), 120)
+            window.setTimeout(() => this.tone(440, 0.42, 'triangle', 0.26), 240)
           } else {
             this.tone(220, 0.55, 'sine', 0.26, 70)
           }

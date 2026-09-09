@@ -13,9 +13,10 @@
     "preview": "tsx scripts/preview.mts",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts",
+    "verify": "tsx scripts/verify-nimiq-crypto.ts && tsx scripts/verify-sim.ts && tsx scripts/verify-renderer.mts && tsx scripts/verify-music.mts",
     "verify:api": "tsx scripts/verify-api.mts",
     "verify:crypto": "tsx scripts/verify-nimiq-crypto.ts",
+    "verify:music": "tsx scripts/verify-music.mts",
     "verify:renderer": "tsx scripts/verify-renderer.mts",
     "verify:sim": "tsx scripts/verify-sim.ts"
   },

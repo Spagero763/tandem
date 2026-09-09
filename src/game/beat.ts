@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The backing beat: trap-shaped, synthesised, no samples.
+ * The backing track: drums, bass, chords and a lead, all synthesised.
  *
  * Scheduling is the whole problem here. `setTimeout` drifts by tens of
  * milliseconds, which a listener hears immediately as a beat that will not sit
@@ -9,6 +9,11 @@
  * enough to queue the next slice of notes onto the audio clock, which is
  * sample accurate. The timer decides *what* to schedule; the audio clock
  * decides *when* it sounds.
+ *
+ * Everything is in D minor, including the pickup sounds in `audio.ts`. That
+ * is not decoration: the two are heard at the same time, constantly, and a
+ * pickup landing a semitone off the chord under it sounds like a mistake
+ * rather than a reward.
  */
 
 const BPM = 144
@@ -24,18 +29,36 @@ const KICK = new Set([0, 3, 6, 10, 11])
 const SNARE = new Set([4, 12])
 const OPEN_HAT = new Set([7, 14])
 
-/** Two bars of root notes, natural minor, so it stays dark rather than jolly. */
-const BASS_LINE = [
-  [0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3],
-  [5, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 1, 1, 1, 1],
+/** D1. Low enough to feel like an 808 rather than a bass guitar. */
+const ROOT_HZ = 36.71
+
+function hz(semitonesAboveRoot: number): number {
+  return ROOT_HZ * Math.pow(2, semitonesAboveRoot / 12)
+}
+
+/**
+ * Dm, F, Csus2, Gsus4. Four bars that lead back into themselves, so the loop
+ * can run a whole heat without announcing where it restarts.
+ *
+ * The suspended voicings are not a stylistic flourish. D minor pentatonic
+ * leaves out E and B flat, which are exactly the notes that build C and B flat
+ * triads, so a pickup would sit a semitone from the chord under it every time
+ * one of those came round. Dropping the third from the last two chords keeps
+ * every note in the same five, and leaves the harmony open rather than plain.
+ */
+export const PROGRESSION = [
+  { root: 0, triad: [0, 3, 7] }, // Dm    D F A
+  { root: 3, triad: [0, 4, 7] }, // F     F A C
+  { root: -2, triad: [0, 7, 14] }, // Csus2 C G D
+  { root: 5, triad: [0, 5, 7] }, // Gsus4 G C D
 ]
 
-const MINOR = [0, 2, 3, 5, 7, 8, 10, 12]
-
-/** D1, low enough to feel like an 808 rather than a bass guitar. */
-function bassFrequency(degree: number): number {
-  return 36.71 * Math.pow(2, MINOR[degree % MINOR.length] / 12)
-}
+/**
+ * The lead, as indices into the bar's chord plus its octave, with -1 for a
+ * rest. Sparse on purpose: the hats already carry the speed, so a busy lead
+ * fights them instead of adding anything.
+ */
+const LEAD = [0, -1, 2, -1, 1, -1, 3, -1, 2, -1, 1, -1, 3, -1, 2, 1]
 
 export class BeatMachine {
   private context: AudioContext
@@ -47,8 +70,9 @@ export class BeatMachine {
   private bar = 0
 
   /**
-   * Rises with the run. Controls hat density and how hard the 808 hits, so a
-   * long clean streak sounds like one rather than merely scoring like one.
+   * Rises with the run. Controls hat density, 808 weight and whether the lead
+   * is playing at all, so a long clean streak sounds like one rather than
+   * merely scoring like one.
    */
   private intensity = 0
 
@@ -105,32 +129,50 @@ export class BeatMachine {
       this.step += 1
       if (this.step >= STEPS_PER_BAR) {
         this.step = 0
-        this.bar = (this.bar + 1) % BASS_LINE.length
+        this.bar = (this.bar + 1) % PROGRESSION.length
       }
     }
   }
 
   private playStep(step: number, at: number): void {
+    const chord = PROGRESSION[this.bar]
+
     if (KICK.has(step)) this.kick(at)
     if (SNARE.has(step)) this.snare(at)
 
-    // Hats carry the speed. Every sixteenth, with rolls appearing as the run
-    // heats up, which is what makes it feel fast rather than merely quick.
+    // Hats carry the speed. Rolls appear as the run heats up, which is what
+    // makes it feel fast rather than merely quick.
     this.hat(at, OPEN_HAT.has(step) ? 0.09 : 0.055, OPEN_HAT.has(step) ? 0.055 : 0.02)
 
-    const rolling = this.intensity > 0.35 && (step === 7 || step === 15)
-    if (rolling) {
+    if (this.intensity > 0.35 && (step === 7 || step === 15)) {
       const divisions = this.intensity > 0.7 ? 3 : 2
       for (let i = 1; i < divisions; i++) {
         this.hat(at + (SECONDS_PER_STEP * i) / divisions, 0.045, 0.018)
       }
     }
 
-    // The 808 follows the kick so the low end stays one voice, not two
-    // fighting each other for the same space.
+    // The chord arrives once, on the downbeat, and holds under everything.
+    if (step === 0) {
+      this.pad(at, chord.triad.map((interval) => hz(chord.root + interval + 24)))
+    }
+
+    // The 808 follows the kick so the low end stays one voice rather than two
+    // fighting for the same space.
     if (KICK.has(step)) {
-      const degree = BASS_LINE[this.bar][step]
-      this.eight0eight(at, bassFrequency(degree), 0.42 + this.intensity * 0.2)
+      this.eight0eight(at, hz(chord.root), 0.42 + this.intensity * 0.2)
+    }
+
+    /*
+     * The lead only shows up once there is a run worth scoring it. Coming in
+     * on the bar rather than the instant the combo crosses keeps it musical
+     * instead of making it stutter in and out mid phrase.
+     */
+    if (this.intensity > 0.22) {
+      const degree = LEAD[step]
+      if (degree >= 0) {
+        const interval = degree < 3 ? chord.triad[degree] : 12
+        this.pluck(at, hz(chord.root + interval + 36), 0.075 + this.intensity * 0.05)
+      }
     }
   }
 
@@ -154,15 +196,8 @@ export class BeatMachine {
 
   private snare(at: number): void {
     const duration = 0.16
-    const frames = Math.floor(this.context.sampleRate * duration)
-    const buffer = this.context.createBuffer(1, frames, this.context.sampleRate)
-    const channel = buffer.getChannelData(0)
-    for (let i = 0; i < frames; i++) {
-      channel[i] = (Math.random() * 2 - 1) * (1 - i / frames) ** 1.6
-    }
-
     const source = this.context.createBufferSource()
-    source.buffer = buffer
+    source.buffer = this.noiseBuffer(duration, 1.6)
 
     const filter = this.context.createBiquadFilter()
     filter.type = 'bandpass'
@@ -192,15 +227,8 @@ export class BeatMachine {
   }
 
   private hat(at: number, gain: number, duration: number): void {
-    const frames = Math.floor(this.context.sampleRate * duration)
-    const buffer = this.context.createBuffer(1, frames, this.context.sampleRate)
-    const channel = buffer.getChannelData(0)
-    for (let i = 0; i < frames; i++) {
-      channel[i] = (Math.random() * 2 - 1) * (1 - i / frames)
-    }
-
     const source = this.context.createBufferSource()
-    source.buffer = buffer
+    source.buffer = this.noiseBuffer(duration, 1)
 
     const filter = this.context.createBiquadFilter()
     filter.type = 'highpass'
@@ -221,8 +249,8 @@ export class BeatMachine {
     const envelope = this.context.createGain()
 
     oscillator.type = 'sine'
-    // The short upward pitch blip at the front is what reads as an 808
-    // rather than a sine tone.
+    // The short upward pitch blip at the front is what reads as an 808 rather
+    // than a sine tone.
     oscillator.frequency.setValueAtTime(frequency * 1.5, at)
     oscillator.frequency.exponentialRampToValueAtTime(frequency, at + 0.05)
 
@@ -234,6 +262,73 @@ export class BeatMachine {
     envelope.connect(this.out)
     oscillator.start(at)
     oscillator.stop(at + duration + 0.02)
+  }
+
+  /** The held chord. Slow attack so it sits behind the drums, never on them. */
+  private pad(at: number, frequencies: number[]): void {
+    const duration = SECONDS_PER_STEP * STEPS_PER_BAR
+
+    const filter = this.context.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 1400
+
+    const envelope = this.context.createGain()
+    envelope.gain.setValueAtTime(0.0001, at)
+    envelope.gain.exponentialRampToValueAtTime(0.075, at + 0.12)
+    envelope.gain.setValueAtTime(0.075, at + duration * 0.6)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration)
+
+    filter.connect(envelope)
+    envelope.connect(this.out)
+
+    for (const frequency of frequencies) {
+      const oscillator = this.context.createOscillator()
+      oscillator.type = 'sawtooth'
+      oscillator.frequency.setValueAtTime(frequency, at)
+
+      // A couple of cents apart per voice, so the chord has width instead of
+      // sounding like one oscillator playing three notes.
+      oscillator.detune.setValueAtTime((Math.random() - 0.5) * 14, at)
+
+      oscillator.connect(filter)
+      oscillator.start(at)
+      oscillator.stop(at + duration + 0.05)
+    }
+  }
+
+  /** The lead. Short and bell-like, so it cuts without needing to be loud. */
+  private pluck(at: number, frequency: number, gain: number): void {
+    const duration = 0.28
+
+    const oscillator = this.context.createOscillator()
+    oscillator.type = 'triangle'
+    oscillator.frequency.setValueAtTime(frequency, at)
+
+    const filter = this.context.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.setValueAtTime(4200, at)
+    filter.frequency.exponentialRampToValueAtTime(900, at + duration)
+
+    const envelope = this.context.createGain()
+    envelope.gain.setValueAtTime(0.0001, at)
+    envelope.gain.exponentialRampToValueAtTime(gain, at + 0.006)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration)
+
+    oscillator.connect(filter)
+    filter.connect(envelope)
+    envelope.connect(this.out)
+    oscillator.start(at)
+    oscillator.stop(at + duration + 0.02)
+  }
+
+  private noiseBuffer(duration: number, curve: number): AudioBuffer {
+    const frames = Math.floor(this.context.sampleRate * duration)
+    const buffer = this.context.createBuffer(1, frames, this.context.sampleRate)
+    const channel = buffer.getChannelData(0)
+    for (let i = 0; i < frames; i++) {
+      channel[i] = (Math.random() * 2 - 1) * (1 - i / frames) ** curve
+    }
+    return buffer
   }
 
   dispose(): void {
