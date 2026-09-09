@@ -12,9 +12,9 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const SIZE = 512
+const SIZE = Number(process.argv[2] ?? 512)
 const OUT = 'submission'
-const PORT = 9336
+const PORT = 9336 + (SIZE % 7)
 
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -112,7 +112,7 @@ const chrome = spawn(
     '--no-first-run',
     '--disable-gpu',
     '--hide-scrollbars',
-    `--user-data-dir=${process.env.TEMP}/tandem-icon`,
+    `--user-data-dir=${process.env.TEMP}/tandem-icon-${SIZE}`,
     `--window-size=${SIZE},${SIZE}`,
     'about:blank',
   ],
@@ -172,8 +172,9 @@ await call('Page.navigate', { url: dataUrl })
 await sleep(1500)
 
 const { data } = (await call('Page.captureScreenshot', { format: 'png' })) as { data: string }
-writeFileSync(`${OUT}/icon.png`, Buffer.from(data, 'base64'))
-console.log(`  ${OUT}/icon.png  (${SIZE}x${SIZE})`)
+const NAME = process.argv[3] ?? 'icon'
+writeFileSync(`${OUT}/${NAME}.png`, Buffer.from(data, 'base64'))
+console.log(`  ${OUT}/${NAME}.png  (${SIZE}x${SIZE})`)
 
 socket.close()
 chrome.kill()

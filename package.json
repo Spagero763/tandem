@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "capture": "tsx scripts/capture.mts",
+    "capture:arena": "tsx scripts/capture-arena.mts",
     "dev": "next dev -H 0.0.0.0 -p 3200",
     "icon": "tsx scripts/icon.mts",
     "inspect": "tsx scripts/inspect-client.mts",
