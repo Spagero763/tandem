@@ -17,6 +17,8 @@ export interface Copy {
   arenaPaused: string
   arenaResume: string
   arenaPausesLeft: (left: number, total: number) => string
+  arenaSoundOn: string
+  arenaSoundOff: string
 
   resultComplete: string
   resultOutAt: (seconds: string) => string
@@ -125,6 +127,8 @@ const en: Copy = {
   arenaPaused: 'Paused',
   arenaResume: 'Resume',
   arenaPausesLeft: (left: number, total: number) => `The heat stops when you leave the app. ${left} of ${total} ${left === 1 ? 'pause' : 'pauses'} left.`,
+  arenaSoundOn: 'Mute sound',
+  arenaSoundOff: 'Unmute sound',
   resultComplete: 'Heat complete',
   resultOutAt: (seconds) => `Out at ${seconds}s`,
   resultRank: 'Rank',
@@ -243,6 +247,8 @@ const de: Copy = {
   arenaPaused: 'Pausiert',
   arenaResume: 'Weiter',
   arenaPausesLeft: (left: number, total: number) => `Der Lauf stoppt, wenn du die App verlässt. Noch ${left} von ${total} ${left === 1 ? 'Pause' : 'Pausen'}.`,
+  arenaSoundOn: 'Ton aus',
+  arenaSoundOff: 'Ton an',
   resultComplete: 'Lauf beendet',
   resultOutAt: (seconds) => `Aus bei ${seconds}s`,
   resultRank: 'Platz',
@@ -362,6 +368,8 @@ const es: Copy = {
   arenaPaused: 'En pausa',
   arenaResume: 'Continuar',
   arenaPausesLeft: (left: number, total: number) => `La ronda se detiene si sales de la app. Te quedan ${left} de ${total} ${left === 1 ? 'pausa' : 'pausas'}.`,
+  arenaSoundOn: 'Silenciar',
+  arenaSoundOff: 'Activar sonido',
   resultComplete: 'Ronda completada',
   resultOutAt: (seconds) => `Fuera a los ${seconds}s`,
   resultRank: 'Puesto',
@@ -481,6 +489,8 @@ const fr: Copy = {
   arenaPaused: 'En pause',
   arenaResume: 'Reprendre',
   arenaPausesLeft: (left: number, total: number) => `La manche s’arrête si vous quittez l’app. Il reste ${left} ${left === 1 ? 'pause' : 'pauses'} sur ${total}.`,
+  arenaSoundOn: 'Couper le son',
+  arenaSoundOff: 'Activer le son',
   resultComplete: 'Manche terminée',
   resultOutAt: (seconds) => `Éliminé à ${seconds}s`,
   resultRank: 'Rang',
@@ -600,6 +610,8 @@ const pt: Copy = {
   arenaPaused: 'Pausado',
   arenaResume: 'Continuar',
   arenaPausesLeft: (left: number, total: number) => `A rodada para se você sair do app. Restam ${left} de ${total} ${left === 1 ? 'pausa' : 'pausas'}.`,
+  arenaSoundOn: 'Silenciar',
+  arenaSoundOff: 'Ativar som',
   resultComplete: 'Rodada concluída',
   resultOutAt: (seconds) => `Fora aos ${seconds}s`,
   resultRank: 'Posição',

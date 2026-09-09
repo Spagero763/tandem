@@ -52,16 +52,19 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd, onPhaseChange }: Pr
   }, [])
 
   const t = useCopy()
-  const { canvasRef, phase, countdown, pauses, pauseAllowance, start, resume } = useTandem({
-    seed,
-    ghostInputs,
-    onHud,
-    onEnd,
-  })
+  const { canvasRef, phase, countdown, pauses, pauseAllowance, muted, toggleMute, start, resume } =
+    useTandem({
+      seed,
+      ghostInputs,
+      onHud,
+      onEnd,
+    })
 
   useEffect(() => {
     onPhaseChange?.(phase)
   }, [phase, onPhaseChange])
+
+  const soundLabel = muted ? t.arenaSoundOff : t.arenaSoundOn
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -117,6 +120,30 @@ export function Arena({ seed, ghostInputs, ghostName, onEnd, onPhaseChange }: Pr
           </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={toggleMute}
+        aria-label={soundLabel}
+        title={soundLabel}
+        className="absolute left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-ink-800/70 text-muted backdrop-blur transition-colors active:bg-ink-700"
+        style={{ bottom: 'calc(var(--safe-bottom) + 1rem)' }}
+      >
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M11 5 6 9H3v6h3l5 4z" />
+          {muted ? (
+            <>
+              <path d="m17 9 4 6" />
+              <path d="m21 9-4 6" />
+            </>
+          ) : (
+            <>
+              <path d="M15.6 8.4a5 5 0 0 1 0 7.2" />
+              <path d="M18.4 5.6a9 9 0 0 1 0 12.8" />
+            </>
+          )}
+        </svg>
+      </button>
 
       <AnimatePresence>
         {phase === 'idle' ? (

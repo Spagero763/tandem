@@ -12,6 +12,7 @@ import {
   type SimState,
 } from '@/lib/sim/simulate'
 
+import { ArenaAudio } from './audio'
 import { ArenaRenderer } from './renderer'
 
 export type RunPhase = 'idle' | 'countdown' | 'running' | 'paused' | 'ended'
@@ -53,9 +54,11 @@ interface Options {
 export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const rendererRef = useRef<ArenaRenderer | null>(null)
+  const audioRef = useRef<ArenaAudio | null>(null)
 
   const [phase, setPhase] = useState<RunPhase>('idle')
   const [countdown, setCountdown] = useState(3)
+  const [muted, setMuted] = useState(false)
   const [pauses, setPauses] = useState(0)
 
   const stateRef = useRef<SimState | null>(null)
@@ -182,6 +185,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
 
           const events: SimEvent[] = step(state, input)
           renderer.absorb(events, state)
+          audioRef.current?.absorb(events, state)
 
           const ghost = ghostRef.current
           if (ghost && !ghost.ended) {
@@ -239,10 +243,13 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     setPhaseBoth('countdown')
     setCountdown(3)
 
+    audioRef.current?.countdown(3)
+
     let remaining = 3
     countdownTimerRef.current = setInterval(() => {
       remaining -= 1
       setCountdown(remaining)
+      audioRef.current?.countdown(remaining)
       if (remaining > 0) return
 
       clearCountdown()
@@ -265,6 +272,13 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
   const start = useCallback(() => {
     const renderer = rendererRef.current
     renderer?.reset()
+
+    // This runs inside the button's click handler, which is the only place a
+    // mobile browser will let an AudioContext start.
+    audioRef.current ??= new ArenaAudio()
+    audioRef.current.unlock()
+    audioRef.current.reset()
+    setMuted(audioRef.current.isMuted)
 
     stateRef.current = createSimState(seed)
     ghostRef.current = ghostInputs?.length ? createSimState(seed) : null
@@ -358,12 +372,27 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     }
   }, [handlePointer])
 
+  const toggleMute = useCallback(() => {
+    // Someone may reach for the mute before ever pressing start, so the
+    // context has to be able to exist without a run in progress.
+    audioRef.current ??= new ArenaAudio()
+    audioRef.current.unlock()
+    setMuted(audioRef.current.toggleMute())
+  }, [])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    return () => audio?.close()
+  }, [])
+
   return {
     canvasRef,
     phase,
     countdown,
     pauses,
     pauseAllowance: PAUSE_ALLOWANCE,
+    muted,
+    toggleMute,
     start,
     resume,
   }
