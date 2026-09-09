@@ -143,6 +143,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     if (!state) return
 
     setPhaseBoth('ended')
+    audioRef.current?.stopBeat()
     emitHud()
 
     onEndRef.current({
@@ -264,6 +265,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
       lastTimeRef.current = 0
       accumulatorRef.current = 0
       setPhaseBoth('running')
+      audioRef.current?.startBeat()
     }, 700)
   }, [clearCountdown, setPhaseBoth])
 
@@ -320,6 +322,7 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
         finish()
       } else {
         setPhaseBoth('paused')
+        audioRef.current?.stopBeat()
       }
     }
 
@@ -377,7 +380,14 @@ export function useTandem({ seed, ghostInputs, onHud, onEnd }: Options) {
     // context has to be able to exist without a run in progress.
     audioRef.current ??= new ArenaAudio()
     audioRef.current.unlock()
-    setMuted(audioRef.current.toggleMute())
+
+    const nowMuted = audioRef.current.toggleMute()
+    setMuted(nowMuted)
+
+    // The bed is a scheduler, not just a gain stage, so it has to be told to
+    // stop rather than merely turned down.
+    if (nowMuted) audioRef.current.stopBeat()
+    else if (phaseRef.current === 'running') audioRef.current.startBeat()
   }, [])
 
   useEffect(() => {

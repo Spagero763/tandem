@@ -2,6 +2,8 @@
 
 import type { SimEvent, SimState } from '@/lib/sim/simulate'
 
+import { BeatMachine } from './beat'
+
 /**
  * The arena's sound, synthesised rather than sampled.
  *
@@ -27,6 +29,7 @@ function noteFrequency(step: number): number {
 export class ArenaAudio {
   private context: AudioContext | null = null
   private master: GainNode | null = null
+  private beat: BeatMachine | null = null
   private muted = false
 
   /** Collected motes since the last miss, for the rising combo line. */
@@ -68,6 +71,13 @@ export class ArenaAudio {
       this.master = this.context.createGain()
       this.master.gain.value = this.muted ? 0 : 0.34
       this.master.connect(this.context.destination)
+
+      // The beat sits under the effects, not level with them, so a mote still
+      // cuts through on a busy bar.
+      const bed = this.context.createGain()
+      bed.gain.value = 0.55
+      bed.connect(this.master)
+      this.beat = new BeatMachine(this.context, bed)
 
       if (this.context.state === 'suspended') void this.context.resume()
     } catch {
@@ -161,6 +171,10 @@ export class ArenaAudio {
   absorb(events: SimEvent[], state: SimState): void {
     if (!this.context || this.muted) return
 
+    // Hat rolls and 808 weight track the combo, so a long clean streak sounds
+    // like one rather than only scoring like one.
+    this.beat?.setIntensity(Math.min(1, state.combo / 45))
+
     for (const event of events) {
       switch (event.type) {
         case 'collect':
@@ -205,7 +219,19 @@ export class ArenaAudio {
     this.step = 0
   }
 
+  startBeat(): void {
+    if (this.muted) return
+    this.beat?.setIntensity(0)
+    this.beat?.start()
+  }
+
+  stopBeat(): void {
+    this.beat?.stop()
+  }
+
   close(): void {
+    this.beat?.dispose()
+    this.beat = null
     this.context?.close().catch(() => {})
     this.context = null
     this.master = null
