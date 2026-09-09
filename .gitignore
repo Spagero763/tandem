@@ -55,3 +55,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# submission assets
+/submission

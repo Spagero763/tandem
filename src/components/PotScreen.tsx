@@ -173,7 +173,7 @@ export function PotScreen() {
 
   return (
     <main
-      className="mx-auto min-h-full w-full max-w-lg px-5 pb-28"
+      className="mx-auto min-h-full w-full max-w-lg px-5 pb-36"
       style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
     >
       <header>
